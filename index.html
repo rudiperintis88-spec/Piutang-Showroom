@@ -301,12 +301,12 @@
     </div>
     <div class="meta">
       <div id="refreshRow" style="display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-bottom:6px;">
-        <span id="syncStatus" style="font-size:12px; color:var(--ink-faint);">🔄 Memuat data live…</span>
+        <span id="syncStatus" style="font-size:12px; color:var(--ink-faint);">Data per <b style="color:var(--ink)">25 September 2026</b></span>
         <button id="refreshBtn" title="Tarik data terbaru dari Google Sheets" style="background:var(--panel-3); border:1px solid var(--line); color:var(--ink); border-radius:7px; padding:5px 11px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap;">
           <span id="refreshIcon">🔄</span> Refresh
         </button>
       </div>
-      Sumber: Laporan Piutang Per Nama (<span id="faktCountLabel">87</span> faktur)
+      Sumber: Laporan Piutang Per Nama (<span id="faktCountLabel">85</span> faktur)
     </div>
   </div>
   <div id="syncMessage" style="display:none; margin:-18px 0 20px; padding:10px 14px; border-radius:8px; font-size:12.5px;"></div>
@@ -315,13 +315,13 @@
   <div class="hero">
     <div class="hero-total">
       <div class="label">Total piutang berjalan — 3 cabang</div>
-      <div class="num" id="heroTotal">Rp 23.377.646.040</div>
-      <div class="sub" id="heroSub">dari <b>87</b> faktur / unit &nbsp;·&nbsp; rata-rata <b>Rp 268.708.575</b> per unit</div>
+      <div class="num" id="heroTotal">Rp 22.940.894.223</div>
+      <div class="sub" id="heroSub">dari <b>85</b> faktur / unit &nbsp;·&nbsp; rata-rata <b>Rp 269.892.873</b> per unit</div>
     </div>
     <div class="hero-buckets" id="heroBuckets">
-      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b1)"></span>1–7 hari</span><div class="amt">Rp 17,93 M</div><div class="cnt">67 faktur</div></div>
-      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b2)"></span>8–14 hari</span><div class="amt">Rp 3,17 M</div><div class="cnt">14 faktur</div></div>
-      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b3)"></span>15–26 hari</span><div class="amt">Rp 408,5 Jt</div><div class="cnt">2 faktur</div></div>
+      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b1)"></span>1–7 hari</span><div class="amt">Rp 14,46 M</div><div class="cnt">55 faktur</div></div>
+      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b2)"></span>8–14 hari</span><div class="amt">Rp 5,60 M</div><div class="cnt">21 faktur</div></div>
+      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b3)"></span>15–26 hari</span><div class="amt">Rp 1,01 M</div><div class="cnt">5 faktur</div></div>
       <div class="bchip crit"><span class="name"><span class="dot" style="background:var(--b4)"></span>&gt; 26 hari</span><div class="amt">Rp 1,87 M</div><div class="cnt">4 faktur · prioritas tagih</div></div>
     </div>
   </div>
@@ -372,7 +372,7 @@
           <span id="penjualanRefreshIcon">🔄</span> Refresh
         </button>
       </div>
-      <div class="penjualan-sync" id="penjualanSync">🔄 Memuat data live…</div>
+      <div class="penjualan-sync" id="penjualanSync">Menampilkan snapshot terakhir — klik Refresh untuk data terbaru</div>
       <div class="penjualan-grid" id="penjualanGrid"></div>
 
       <div class="pj-subtitle">Penjualan per Bulan <span>2026 · per cabang · jumlah unit</span></div>
@@ -433,36 +433,36 @@
 
   /* ---------------- static report data ---------------- */
   const branches = [
-    { key:'gatsu', name:'Gatsu', addr:'Jl. Gatot Subroto', color:'var(--gatsu)', total:7665954951, count:28,
-      buckets:[ {label:'1–7 hari',count:20,sum:5629619591,color:'var(--b1)'}, {label:'8–14 hari',count:5,sum:846625360,color:'var(--b2)'},
-                {label:'15–26 hari',count:1,sum:243810000,color:'var(--b3)'}, {label:'> 26 hari',count:2,sum:945900000,color:'var(--b4)'} ] },
-    { key:'flamboyan', name:'Flamboyan', addr:'Jl. Flamboyan Raya', color:'var(--flamboyan)', total:6035839997, count:20,
-      buckets:[ {label:'1–7 hari',count:14,sum:4174439997,color:'var(--b1)'}, {label:'8–14 hari',count:3,sum:772100000,color:'var(--b2)'},
-                {label:'15–26 hari',count:1,sum:164700000,color:'var(--b3)'}, {label:'> 26 hari',count:2,sum:924600000,color:'var(--b4)'} ] },
-    { key:'gagak', name:'Gagak Hitam', addr:'Jl. Gagak Hitam', color:'var(--gagak)', total:9675851092, count:39,
-      buckets:[ {label:'1–7 hari',count:33,sum:8129036092,color:'var(--b1)'}, {label:'8–14 hari',count:6,sum:1546815000,color:'var(--b2)'},
-                {label:'15–26 hari',count:0,sum:0,color:'var(--b3)'}, {label:'> 26 hari',count:0,sum:0,color:'var(--b4)'} ] },
+    { key:'gatsu', name:'Gatsu', addr:'Jl. Gatot Subroto', color:'var(--gatsu)', total:7566545234, count:26,
+      buckets:[ {label:'1–7 hari',count:15,sum:4087999674,color:'var(--b1)'}, {label:'8–14 hari',count:7,sum:2101559100,color:'var(--b2)'},
+                {label:'15–26 hari',count:2,sum:431086460,color:'var(--b3)'}, {label:'> 26 hari',count:2,sum:945900000,color:'var(--b4)'} ] },
+    { key:'flamboyan', name:'Flamboyan', addr:'Jl. Flamboyan Raya', color:'var(--flamboyan)', total:5615689997, count:18,
+      buckets:[ {label:'1–7 hari',count:10,sum:3281090000,color:'var(--b1)'}, {label:'8–14 hari',count:4,sum:1087799997,color:'var(--b2)'},
+                {label:'15–26 hari',count:2,sum:322200000,color:'var(--b3)'}, {label:'> 26 hari',count:2,sum:924600000,color:'var(--b4)'} ] },
+    { key:'gagak', name:'Gagak Hitam', addr:'Jl. Gagak Hitam', color:'var(--gagak)', total:9758658992, count:41,
+      buckets:[ {label:'1–7 hari',count:30,sum:7088408467,color:'var(--b1)'}, {label:'8–14 hari',count:10,sum:2413450525,color:'var(--b2)'},
+                {label:'15–26 hari',count:1,sum:256800000,color:'var(--b3)'}, {label:'> 26 hari',count:0,sum:0,color:'var(--b4)'} ] },
   ];
 
   const priority = [
-    { name:'PT.GO RENTAL', id:'A0010662GOR', faktur:'000007/FKT/PP/0826', cabang:'gatsu', cabangLabel:'Gatsu', metode:'Tunai', jumlah:472950000, jto:'03 Agu 2026', hari:53, sales:'SALINDO DOMINGGOS R.' },
-    { name:'PT.GO RENTAL', id:'A0010662GOR', faktur:'000026/FKT/PP/0826', cabang:'gatsu', cabangLabel:'Gatsu', metode:'Tunai', jumlah:472950000, jto:'06 Agu 2026', hari:50, sales:'SALINDO DOMINGGOS R.' },
-    { name:'PT SUTAN INDO ANEKA MOBIL', id:'F0007224SIA', faktur:'000075/FKT/PP/0826', cabang:'flamboyan', cabangLabel:'Flamboyan', metode:'Tunai', jumlah:478000000, jto:'13 Agu 2026', hari:43, sales:'SHINTIA PRIYANTI' },
-    { name:'PT SUTAN INDO ANEKA MOBIL', id:'F0007224SIA', faktur:'000055/FKT/PP/0826', cabang:'flamboyan', cabangLabel:'Flamboyan', metode:'Tunai', jumlah:446600000, jto:'11 Agu 2026', hari:45, sales:'SHINTIA PRIYANTI' },
+    { name:'PT.GO RENTAL', id:'A0010662GOR', faktur:'000007/FKT/PP/0826', cabang:'gatsu', cabangLabel:'Gatsu', metode:'Tunai', jumlah:472950000, jto:'03 Agu 2026', hari:54, sales:'SALINDO DOMINGGOS R.' },
+    { name:'PT.GO RENTAL', id:'A0010662GOR', faktur:'000026/FKT/PP/0826', cabang:'gatsu', cabangLabel:'Gatsu', metode:'Tunai', jumlah:472950000, jto:'06 Agu 2026', hari:51, sales:'SALINDO DOMINGGOS R.' },
+    { name:'PT SUTAN INDO ANEKA MOBIL', id:'F0007224SIA', faktur:'000055/FKT/PP/0826', cabang:'flamboyan', cabangLabel:'Flamboyan', metode:'Tunai', jumlah:446600000, jto:'11 Agu 2026', hari:46, sales:'SHINTIA PRIYANTI' },
+    { name:'PT SUTAN INDO ANEKA MOBIL', id:'F0007224SIA', faktur:'000075/FKT/PP/0826', cabang:'flamboyan', cabangLabel:'Flamboyan', metode:'Tunai', jumlah:478000000, jto:'13 Agu 2026', hari:44, sales:'SHINTIA PRIYANTI' },
   ].sort((a,b) => b.hari - a.hari);
 
   const leasingBreakdown = [
-    { name:'ACC', count:27, sum:6815669997, byBranch:{ gatsu:{count:5,sum:1288830000}, flamboyan:{count:8,sum:1796599997}, gagak:{count:14,sum:3730240000} } },
-    { name:'TAF', count:30, sum:6341174830, byBranch:{ gatsu:{count:11,sum:2075168900}, flamboyan:{count:3,sum:638340000}, gagak:{count:16,sum:3627665930} } },
+    { name:'TAF', count:32, sum:6664074830, byBranch:{ gatsu:{count:11,sum:2053468900}, flamboyan:{count:3,sum:638340000}, gagak:{count:18,sum:3972265930} } },
+    { name:'ACC', count:26, sum:6634219997, byBranch:{ gatsu:{count:5,sum:1531830000}, flamboyan:{count:7,sum:1524749997}, gagak:{count:14,sum:3577640000} } },
     { name:'Tunai (Cash)', count:9, sum:3221600000, byBranch:{ gatsu:{count:2,sum:945900000}, flamboyan:{count:6,sum:2032500000}, gagak:{count:1,sum:243200000} } },
-    { name:'KKB', count:8, sum:2752353353, byBranch:{ gatsu:{count:7,sum:2536229191}, gagak:{count:1,sum:216124162} } },
-    { name:'BUANA', count:5, sum:1375032000, byBranch:{ gatsu:{count:2,sum:582805000}, flamboyan:{count:1,sum:148300000}, gagak:{count:2,sum:643927000} } },
+    { name:'KKB', count:7, sum:2609849636, byBranch:{ gatsu:{count:6,sum:2393725474}, gagak:{count:1,sum:216124162} } },
     { name:'ADM', count:1, sum:1262600000, byBranch:{ flamboyan:{count:1,sum:1262600000} } },
-    { name:'MTF', count:3, sum:772365000, byBranch:{ gagak:{count:3,sum:772365000} } },
+    { name:'MTF', count:4, sum:974359900, byBranch:{ gagak:{count:4,sum:974359900} } },
+    { name:'BUANA', count:2, sum:737339000, byBranch:{ gatsu:{count:1,sum:404599000}, gagak:{count:1,sum:332740000} } },
     { name:'MUF', count:2, sum:442329000, byBranch:{ gagak:{count:2,sum:442329000} } },
     { name:'BRIM', count:1, sum:237021860, byBranch:{ gatsu:{count:1,sum:237021860} } },
     { name:'IMFS', count:1, sum:157500000, byBranch:{ flamboyan:{count:1,sum:157500000} } },
-  ].map(l => ({ ...l, pct: l.sum / 23377646040 })).sort((a,b) => b.sum - a.sum);
+  ].map(l => ({ ...l, pct: l.sum / 22940894223 })).sort((a,b) => b.sum - a.sum);
 
   /* ---------------- dynamic aggregation engine (shared by initial render & refresh) ---------------- */
   const BRANCH_META = {
@@ -655,24 +655,24 @@
 
   /* ---------------- render "Penjualan per Divisi" tab (tahun berjalan, live dari sheet "Data") ---------------- */
   let penjualanData = [
-    { key:'gatsu', name:'Gatsu', color:'var(--gatsu)', unit:1020 },
-    { key:'flamboyan', name:'Flamboyan', color:'var(--flamboyan)', unit:503 },
-    { key:'gagak', name:'Gagak Hitam', color:'var(--gagak)', unit:535 },
+    { key:'gatsu', name:'Gatsu', color:'var(--gatsu)', unit:1023 },
+    { key:'flamboyan', name:'Flamboyan', color:'var(--flamboyan)', unit:504 },
+    { key:'gagak', name:'Gagak Hitam', color:'var(--gagak)', unit:539 },
   ];
   let PENJUALAN_ASOF = 'Jan – Sep 2026 (tahun berjalan)';
 
   let MONTH_LABELS = ['Jan 26','Feb 26','Mar 26','Apr 26','Mei 26','Jun 26','Jul 26','Agu 26','Sep 26'];
 
   let monthlyByDivision = {
-    gatsu: [111,124,126,142,106,111,113,110,77],
-    flamboyan: [46,57,63,79,55,58,53,47,45],
-    gagak: [47,53,50,68,36,47,50,97,87],
+    gatsu: [111,124,126,142,106,111,113,110,80],
+    flamboyan: [46,57,63,79,55,58,53,47,46],
+    gagak: [47,53,50,68,36,47,50,97,91],
   };
 
   let salesLeasingCurrentMonth = {
-    gatsu: [ {name:'TAF',unit:22},{name:'Cash (Tunai)',unit:17},{name:'ACC',unit:17},{name:'KKB',unit:10},{name:'BRIM',unit:4},{name:'BUANA',unit:4},{name:'MYIF',unit:2},{name:'MTF',unit:1} ],
-    flamboyan: [ {name:'Cash (Tunai)',unit:13},{name:'TAF',unit:13},{name:'ACC',unit:13},{name:'BRIM',unit:2},{name:'IMFS',unit:1},{name:'BSI',unit:1},{name:'BUANA',unit:1},{name:'ADM',unit:1} ],
-    gagak: [ {name:'TAF',unit:35},{name:'ACC',unit:26},{name:'Cash (Tunai)',unit:12},{name:'MTF',unit:5},{name:'MUF',unit:4},{name:'BUANA',unit:2},{name:'MYIF',unit:1},{name:'BCAF',unit:1},{name:'KKB',unit:1} ],
+    gatsu: [ {name:'TAF',unit:23},{name:'ACC',unit:19},{name:'Cash (Tunai)',unit:17},{name:'KKB',unit:10},{name:'BRIM',unit:4},{name:'BUANA',unit:4},{name:'MYIF',unit:2},{name:'MTF',unit:1} ],
+    flamboyan: [ {name:'ACC',unit:14},{name:'Cash (Tunai)',unit:13},{name:'TAF',unit:13},{name:'BRIM',unit:2},{name:'IMFS',unit:1},{name:'BSI',unit:1},{name:'BUANA',unit:1},{name:'ADM',unit:1} ],
+    gagak: [ {name:'TAF',unit:37},{name:'ACC',unit:27},{name:'Cash (Tunai)',unit:12},{name:'MTF',unit:6},{name:'MUF',unit:4},{name:'BUANA',unit:2},{name:'MYIF',unit:1},{name:'BCAF',unit:1},{name:'KKB',unit:1} ],
   };
   let LEASING_MONTH_LABEL = 'September 2026';
 
@@ -740,7 +740,7 @@
   }
 
   /* ---------------- live fetch: sheet "Data" (unit sold log) published CSV ---------------- */
-  const SALES_CSV_URL = '/api/sheet?type=penjualan';
+  const SALES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=0&single=true&output=csv';
 
   function parseFlexibleDate(s) {
     s = String(s == null ? '' : s).trim();
@@ -848,7 +848,7 @@
       PENJUALAN_ASOF = agg.asOf;
       renderPenjualanPerDivisi();
       const now = new Date();
-      setSalesSyncStatus('', `🔄 Live · tersinkron ${fmtTimeShort(now)} · otomatis tiap 2 menit`);
+      setSalesSyncStatus('', `✓ Tersinkron ${fmtTimeShort(now)}`);
     } catch (err) {
       console.error('sales sync error', err);
       setSalesSyncStatus('error', `⚠ Gagal sinkron data penjualan (${err.code || 'error'}) — menampilkan data terakhir yang berhasil dimuat.`);
@@ -860,12 +860,6 @@
   const penjualanRefreshBtn = document.getElementById('penjualanRefreshBtn');
   const penjualanRefreshIcon = document.getElementById('penjualanRefreshIcon');
   penjualanRefreshBtn.addEventListener('click', () => fetchSalesData(false));
-
-  const SALES_POLL_MS = 120000; // 2 menit
-  function startSalesAutoSync() {
-    fetchSalesData(false);
-    setInterval(() => fetchSalesData(true), SALES_POLL_MS);
-  }
 
 
   function wireMainTabs() {
@@ -1229,7 +1223,7 @@
   }
 
   /* ---------------- refresh from Google Sheets (Published to Web CSV, no login needed) ---------------- */
-  const PUBLISHED_CSV_URL = '/api/sheet?type=piutang';
+  const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=860325626&single=true&output=csv';
 
   const refreshBtn = document.getElementById('refreshBtn');
   const refreshIcon = document.getElementById('refreshIcon');
@@ -1261,7 +1255,7 @@
       const agg = computeAggregates(rows);
       applyAggregates(agg);
       const now = new Date();
-      syncStatusEl.innerHTML = `🔄 Live · tersinkron <b>${fmtTimeShort(now)}</b> · otomatis tiap 2 menit`;
+      syncStatusEl.innerHTML = `Disinkron manual <b>${fmtTglLong(now)}, ${fmtTimeShort(now)}</b>`;
       if (!isAuto) showSyncMessage('success', `✓ Berhasil disinkron dari spreadsheet — ${agg.count} faktur, ${fmtTglLong(now)} pukul ${fmtTimeShort(now)}`);
     } catch (err) {
       handleRefreshError(err, isAuto);
@@ -1284,12 +1278,6 @@
 
   refreshBtn.addEventListener('click', () => refreshFromSheet(false));
 
-  const PIUTANG_POLL_MS = 120000; // 2 menit
-  function startPiutangAutoSync() {
-    refreshFromSheet(false);
-    setInterval(() => refreshFromSheet(true), PIUTANG_POLL_MS);
-  }
-
   /* ---------------- boot ---------------- */
   renderBranchCards(branches);
   renderLeasingTable(leasingBreakdown);
@@ -1298,8 +1286,6 @@
   renderPriorityTable(priority);
   initLocalFeatures();
   wireMainTabs();
-  startPiutangAutoSync();
-  startSalesAutoSync();
 })();
 </script>
 </body>
