@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/sheet.js": {
-      "runtime": "nodejs20.x"
-    }
-  }
-}
