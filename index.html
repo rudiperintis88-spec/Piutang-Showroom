@@ -301,7 +301,7 @@
     </div>
     <div class="meta">
       <div id="refreshRow" style="display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-bottom:6px;">
-        <span id="syncStatus" style="font-size:12px; color:var(--ink-faint);">Data per <b style="color:var(--ink)">25 September 2026</b></span>
+        <span id="syncStatus" style="font-size:12px; color:var(--ink-faint);">🔄 Memuat data live…</span>
         <button id="refreshBtn" title="Tarik data terbaru dari Google Sheets" style="background:var(--panel-3); border:1px solid var(--line); color:var(--ink); border-radius:7px; padding:5px 11px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap;">
           <span id="refreshIcon">🔄</span> Refresh
         </button>
@@ -372,7 +372,7 @@
           <span id="penjualanRefreshIcon">🔄</span> Refresh
         </button>
       </div>
-      <div class="penjualan-sync" id="penjualanSync">Menampilkan snapshot terakhir — klik Refresh untuk data terbaru</div>
+      <div class="penjualan-sync" id="penjualanSync">🔄 Memuat data live…</div>
       <div class="penjualan-grid" id="penjualanGrid"></div>
 
       <div class="pj-subtitle">Penjualan per Bulan <span>2026 · per cabang · jumlah unit</span></div>
@@ -740,7 +740,7 @@
   }
 
   /* ---------------- live fetch: sheet "Data" (unit sold log) published CSV ---------------- */
-  const SALES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=0&single=true&output=csv';
+  const SALES_CSV_URL = '/api/sheet?type=penjualan';
 
   function parseFlexibleDate(s) {
     s = String(s == null ? '' : s).trim();
@@ -848,7 +848,7 @@
       PENJUALAN_ASOF = agg.asOf;
       renderPenjualanPerDivisi();
       const now = new Date();
-      setSalesSyncStatus('', `✓ Tersinkron ${fmtTimeShort(now)}`);
+      setSalesSyncStatus('', `🔄 Live · tersinkron ${fmtTimeShort(now)} · otomatis tiap 2 menit`);
     } catch (err) {
       console.error('sales sync error', err);
       setSalesSyncStatus('error', `⚠ Gagal sinkron data penjualan (${err.code || 'error'}) — menampilkan data terakhir yang berhasil dimuat.`);
@@ -860,6 +860,12 @@
   const penjualanRefreshBtn = document.getElementById('penjualanRefreshBtn');
   const penjualanRefreshIcon = document.getElementById('penjualanRefreshIcon');
   penjualanRefreshBtn.addEventListener('click', () => fetchSalesData(false));
+
+  const SALES_POLL_MS = 120000; // 2 menit
+  function startSalesAutoSync() {
+    fetchSalesData(false);
+    setInterval(() => fetchSalesData(true), SALES_POLL_MS);
+  }
 
 
   function wireMainTabs() {
@@ -1223,7 +1229,7 @@
   }
 
   /* ---------------- refresh from Google Sheets (Published to Web CSV, no login needed) ---------------- */
-  const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=860325626&single=true&output=csv';
+  const PUBLISHED_CSV_URL = '/api/sheet?type=piutang';
 
   const refreshBtn = document.getElementById('refreshBtn');
   const refreshIcon = document.getElementById('refreshIcon');
@@ -1255,7 +1261,7 @@
       const agg = computeAggregates(rows);
       applyAggregates(agg);
       const now = new Date();
-      syncStatusEl.innerHTML = `Disinkron manual <b>${fmtTglLong(now)}, ${fmtTimeShort(now)}</b>`;
+      syncStatusEl.innerHTML = `🔄 Live · tersinkron <b>${fmtTimeShort(now)}</b> · otomatis tiap 2 menit`;
       if (!isAuto) showSyncMessage('success', `✓ Berhasil disinkron dari spreadsheet — ${agg.count} faktur, ${fmtTglLong(now)} pukul ${fmtTimeShort(now)}`);
     } catch (err) {
       handleRefreshError(err, isAuto);
@@ -1278,6 +1284,12 @@
 
   refreshBtn.addEventListener('click', () => refreshFromSheet(false));
 
+  const PIUTANG_POLL_MS = 120000; // 2 menit
+  function startPiutangAutoSync() {
+    refreshFromSheet(false);
+    setInterval(() => refreshFromSheet(true), PIUTANG_POLL_MS);
+  }
+
   /* ---------------- boot ---------------- */
   renderBranchCards(branches);
   renderLeasingTable(leasingBreakdown);
@@ -1286,6 +1298,8 @@
   renderPriorityTable(priority);
   initLocalFeatures();
   wireMainTabs();
+  startPiutangAutoSync();
+  startSalesAutoSync();
 })();
 </script>
 </body>
