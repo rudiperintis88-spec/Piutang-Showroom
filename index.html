@@ -155,7 +155,10 @@
   table.division-table td.zero { color: var(--ink-faint); }
 
   /* penjualan per divisi */
-  .penjualan-note { font-size: 12px; color: var(--ink-faint); margin-bottom: 14px; }
+  .penjualan-note { font-size: 12px; color: var(--ink-faint); margin-bottom: 4px; }
+  .penjualan-sync { font-size: 11.5px; color: var(--b1); margin-bottom: 14px; display: flex; align-items: center; gap: 5px; }
+  .penjualan-sync.error { color: var(--b4); }
+  .penjualan-sync.loading { color: var(--ink-faint); }
   .penjualan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
   @media (max-width: 900px) { .penjualan-grid { grid-template-columns: 1fr; } }
   .pj-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; border-top: 3px solid var(--accent); text-align: center; }
@@ -295,7 +298,7 @@
     </div>
     <div class="meta">
       <div id="refreshRow" style="display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-bottom:6px;">
-        <span id="syncStatus" style="font-size:12px; color:var(--ink-faint);">Data per <b style="color:var(--ink)">25 September 2026</b></span>
+        <span id="syncStatus" style="font-size:12px; color:var(--ink-faint);">🔄 Memuat data live…</span>
         <button id="refreshBtn" title="Tarik data terbaru dari Google Sheets" style="background:var(--panel-3); border:1px solid var(--line); color:var(--ink); border-radius:7px; padding:5px 11px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap;">
           <span id="refreshIcon">🔄</span> Refresh
         </button>
@@ -361,6 +364,7 @@
   <div class="tabpane hidden" id="tab-penjualan">
     <div class="penjualanwrap">
       <div class="penjualan-note" id="penjualanNote">Kumulatif sejak transaksi pertama tercatat</div>
+      <div class="penjualan-sync" id="penjualanSync">🔄 Live · otomatis sinkron setiap 2 menit dari Google Sheets</div>
       <div class="penjualan-grid" id="penjualanGrid"></div>
 
       <div class="pj-subtitle">Penjualan per Bulan <span>2026 · per cabang · jumlah unit</span></div>
@@ -466,6 +470,7 @@
     { label:'> 26 hari', color:'var(--b4)', test: h => h>26 },
   ];
   const MONTHS_ID_LONG = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const MONTHS_ID = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   function fmtTglLong(d) { return `${d.getDate()} ${MONTHS_ID_LONG[d.getMonth()]} ${d.getFullYear()}`; }
   function fmtTimeShort(d) { return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
   function fmtShortRp(n) {
@@ -640,28 +645,28 @@
     return totals;
   }
 
-  /* ---------------- render "Penjualan per Divisi" tab (tahun berjalan: 2026 YTD) ---------------- */
-  const penjualanData = [
+  /* ---------------- render "Penjualan per Divisi" tab (tahun berjalan, live dari sheet "Data") ---------------- */
+  let penjualanData = [
     { key:'gatsu', name:'Gatsu', color:'var(--gatsu)', unit:1020 },
     { key:'flamboyan', name:'Flamboyan', color:'var(--flamboyan)', unit:503 },
     { key:'gagak', name:'Gagak Hitam', color:'var(--gagak)', unit:535 },
   ];
-  const PENJUALAN_ASOF = 'Jan – Sep 2026 (tahun berjalan)';
+  let PENJUALAN_ASOF = 'Jan – Sep 2026 (tahun berjalan)';
 
-  const MONTH_LABELS = ['Jan 26','Feb 26','Mar 26','Apr 26','Mei 26','Jun 26','Jul 26','Agu 26','Sep 26'];
+  let MONTH_LABELS = ['Jan 26','Feb 26','Mar 26','Apr 26','Mei 26','Jun 26','Jul 26','Agu 26','Sep 26'];
 
-  const monthlyByDivision = {
+  let monthlyByDivision = {
     gatsu: [111,124,126,142,106,111,113,110,77],
     flamboyan: [46,57,63,79,55,58,53,47,45],
     gagak: [47,53,50,68,36,47,50,97,87],
   };
 
-  const salesLeasingCurrentMonth = {
+  let salesLeasingCurrentMonth = {
     gatsu: [ {name:'TAF',unit:22},{name:'Cash (Tunai)',unit:17},{name:'ACC',unit:17},{name:'KKB',unit:10},{name:'BRIM',unit:4},{name:'BUANA',unit:4},{name:'MYIF',unit:2},{name:'MTF',unit:1} ],
     flamboyan: [ {name:'Cash (Tunai)',unit:13},{name:'TAF',unit:13},{name:'ACC',unit:13},{name:'BRIM',unit:2},{name:'IMFS',unit:1},{name:'BSI',unit:1},{name:'BUANA',unit:1},{name:'ADM',unit:1} ],
     gagak: [ {name:'TAF',unit:35},{name:'ACC',unit:26},{name:'Cash (Tunai)',unit:12},{name:'MTF',unit:5},{name:'MUF',unit:4},{name:'BUANA',unit:2},{name:'MYIF',unit:1},{name:'BCAF',unit:1},{name:'KKB',unit:1} ],
   };
-  const LEASING_MONTH_LABEL = 'September 2026';
+  let LEASING_MONTH_LABEL = 'September 2026';
 
   function renderPenjualanPerDivisi() {
     const grid = document.getElementById('penjualanGrid');
@@ -724,6 +729,127 @@
         </table>
       </div>`;
     }).join('');
+  }
+
+  /* ---------------- live fetch: sheet "Data" (unit sold log) published CSV ---------------- */
+  const SALES_CSV_URL = '/api/sheet?type=penjualan';
+  const SALES_POLL_MS = 120000; // 2 menit
+
+  function parseFlexibleDate(s) {
+    s = String(s == null ? '' : s).trim();
+    if (!s) return null;
+    let d = new Date(s);
+    if (!isNaN(d.getTime())) return d;
+    const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    if (m) {
+      let [, a, b, y] = m;
+      y = y.length === 2 ? '20' + y : y;
+      let day = +a, month = +b;
+      if (day <= 12 && month > 12) { [day, month] = [month, day]; }
+      d = new Date(+y, month - 1, day);
+      if (!isNaN(d.getTime())) return d;
+    }
+    return null;
+  }
+
+  function parseSalesCSV(text) {
+    const rows = parseCSVFull(text);
+    let headerIdx = -1;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row && String(row[0]).trim() === 'No' && String(row[1]).trim() === 'Tanggal') { headerIdx = i; break; }
+    }
+    if (headerIdx === -1) { const e = new Error('Header sheet Data tidak ditemukan'); e.code = 'HEADER_NOT_FOUND'; throw e; }
+    const out = [];
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row) continue;
+      const divisi = row[9];
+      const tgl = parseFlexibleDate(row[1]);
+      if (!divisi || !tgl) continue;
+      out.push({ tanggal: tgl, cara: String(row[7] || '').trim(), divisi: String(divisi).trim(), statusFnc: String(row[10] || '').trim() });
+    }
+    if (!out.length) { const e = new Error('Tidak ada baris data penjualan yang terbaca'); e.code = 'NO_ROWS'; throw e; }
+    return out;
+  }
+
+  function computeSalesAggregates(rows) {
+    const currentYear = Math.max(...rows.map(r => r.tanggal.getFullYear()));
+    const yearRows = rows.filter(r => r.tanggal.getFullYear() === currentYear);
+    const currentMonth = Math.max(...yearRows.map(r => r.tanggal.getMonth()));
+    const monthRows = yearRows.filter(r => r.tanggal.getMonth() === currentMonth);
+
+    const divOrder = ['Gatsu', 'Flamboyan', 'Gagak Hitam'];
+    const newPenjualanData = divOrder.map(name => {
+      const meta = BRANCH_META[name];
+      const unit = yearRows.filter(r => r.divisi === name).length;
+      return { key: meta.key, name, color: meta.color, unit };
+    });
+
+    const yy = String(currentYear).slice(2);
+    const newMonthLabels = [];
+    for (let m = 0; m <= currentMonth; m++) newMonthLabels.push(`${MONTHS_ID[m]} ${yy}`);
+
+    const newMonthlyByDivision = {};
+    divOrder.forEach(name => {
+      const meta = BRANCH_META[name];
+      const arr = [];
+      for (let m = 0; m <= currentMonth; m++) {
+        arr.push(yearRows.filter(r => r.divisi === name && r.tanggal.getMonth() === m).length);
+      }
+      newMonthlyByDivision[meta.key] = arr;
+    });
+
+    const newSalesLeasing = {};
+    divOrder.forEach(name => {
+      const meta = BRANCH_META[name];
+      const sub = monthRows.filter(r => r.divisi === name);
+      const map = {};
+      sub.forEach(r => {
+        const key = (r.cara === 'Tunai' || !r.statusFnc) ? 'Cash (Tunai)' : r.statusFnc;
+        map[key] = (map[key] || 0) + 1;
+      });
+      newSalesLeasing[meta.key] = Object.entries(map).map(([name, unit]) => ({ name, unit })).sort((a, b) => b.unit - a.unit);
+    });
+
+    const monthLabelLong = `${MONTHS_ID_LONG[currentMonth]} ${currentYear}`;
+    const asOf = `${MONTHS_ID[0]} – ${MONTHS_ID[currentMonth]} ${currentYear} (tahun berjalan)`;
+
+    return { penjualanData: newPenjualanData, monthLabels: newMonthLabels, monthlyByDivision: newMonthlyByDivision, salesLeasing: newSalesLeasing, monthLabelLong, asOf };
+  }
+
+  function setSalesSyncStatus(kind, text) {
+    const el = document.getElementById('penjualanSync');
+    el.className = 'penjualan-sync' + (kind ? ' ' + kind : '');
+    el.textContent = text;
+  }
+
+  async function fetchSalesData(isAuto) {
+    setSalesSyncStatus('loading', '🔄 Menyinkronkan data penjualan…');
+    try {
+      const res = await fetch(SALES_CSV_URL, { cache: 'no-store' });
+      if (!res.ok) { const e = new Error('HTTP ' + res.status); e.code = 'HTTP_' + res.status; throw e; }
+      const text = await res.text();
+      const rows = parseSalesCSV(text);
+      const agg = computeSalesAggregates(rows);
+      penjualanData = agg.penjualanData;
+      MONTH_LABELS = agg.monthLabels;
+      monthlyByDivision = agg.monthlyByDivision;
+      salesLeasingCurrentMonth = agg.salesLeasing;
+      LEASING_MONTH_LABEL = agg.monthLabelLong;
+      PENJUALAN_ASOF = agg.asOf;
+      renderPenjualanPerDivisi();
+      const now = new Date();
+      setSalesSyncStatus('', `🔄 Live · tersinkron ${fmtTimeShort(now)} · otomatis tiap 2 menit`);
+    } catch (err) {
+      console.error('sales sync error', err);
+      setSalesSyncStatus('error', `⚠ Gagal sinkron data penjualan (${err.code || 'error'}) — menampilkan data terakhir yang berhasil dimuat.`);
+    }
+  }
+
+  function startSalesAutoSync() {
+    fetchSalesData(false);
+    setInterval(() => fetchSalesData(true), SALES_POLL_MS);
   }
 
 
@@ -1088,7 +1214,7 @@
   }
 
   /* ---------------- refresh from Google Sheets (Published to Web CSV, no login needed) ---------------- */
-  const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=860325626&single=true&output=csv';
+  const PUBLISHED_CSV_URL = '/api/sheet?type=piutang';
 
   const refreshBtn = document.getElementById('refreshBtn');
   const refreshIcon = document.getElementById('refreshIcon');
@@ -1109,9 +1235,9 @@
     refreshBtn.style.opacity = loading ? '.6' : '1';
   }
 
-  async function refreshFromSheet() {
+  async function refreshFromSheet(isAuto) {
     setRefreshLoading(true);
-    syncMessageEl.style.display = 'none';
+    if (!isAuto) syncMessageEl.style.display = 'none';
     try {
       const res = await fetch(PUBLISHED_CSV_URL, { cache: 'no-store' });
       if (!res.ok) { const e = new Error('HTTP ' + res.status); e.code = 'HTTP_' + res.status; throw e; }
@@ -1120,36 +1246,45 @@
       const agg = computeAggregates(rows);
       applyAggregates(agg);
       const now = new Date();
-      syncStatusEl.innerHTML = `Disinkron manual <b>${fmtTglLong(now)}, ${fmtTimeShort(now)}</b>`;
-      showSyncMessage('success', `✓ Berhasil disinkron dari spreadsheet — ${agg.count} faktur, ${fmtTglLong(now)} pukul ${fmtTimeShort(now)}`);
+      syncStatusEl.innerHTML = `🔄 Live · tersinkron <b>${fmtTimeShort(now)}</b> · otomatis tiap 2 menit`;
+      if (!isAuto) showSyncMessage('success', `✓ Berhasil disinkron dari spreadsheet — ${agg.count} faktur, ${fmtTglLong(now)} pukul ${fmtTimeShort(now)}`);
     } catch (err) {
-      handleRefreshError(err);
+      handleRefreshError(err, isAuto);
     } finally {
       setRefreshLoading(false);
     }
   }
 
-  function handleRefreshError(err) {
+  function handleRefreshError(err, isAuto) {
     const code = err && err.code;
     let msg = `Gagal menyinkronkan data (${code || 'kesalahan tidak dikenal'}). Coba lagi.`;
     if (code === 'HEADER_NOT_FOUND') msg = 'Format header sheet tidak dikenali — mungkin struktur laporan berubah.';
     else if (code === 'NO_ROWS') msg = 'Tidak ada baris data piutang yang terbaca dari sheet.';
     else if (code === 'TypeError' || /fetch/i.test(String(err && err.message))) msg = 'Gagal mengambil data — periksa koneksi internet, atau sheet mungkin tidak lagi bisa diakses publik.';
     else if (String(code).startsWith('HTTP_')) msg = `Google Sheets menolak permintaan (${code}). Pastikan sheet masih dibagikan sebagai "Anyone with link".`;
-    showSyncMessage('error', msg);
+    syncStatusEl.innerHTML = `⚠ Gagal sinkron — menampilkan data terakhir`;
+    if (!isAuto) showSyncMessage('error', msg);
     console.error('refresh error', err);
   }
 
-  refreshBtn.addEventListener('click', refreshFromSheet);
+  refreshBtn.addEventListener('click', () => refreshFromSheet(false));
+
+  const PIUTANG_POLL_MS = 120000; // 2 menit
+  function startPiutangAutoSync() {
+    refreshFromSheet(false);
+    setInterval(() => refreshFromSheet(true), PIUTANG_POLL_MS);
+  }
 
   /* ---------------- boot ---------------- */
   renderBranchCards(branches);
   renderLeasingTable(leasingBreakdown);
   renderDivisionCards(leasingBreakdown, computeBranchTotalsFromLeasing(leasingBreakdown));
   renderPenjualanPerDivisi();
-  wireMainTabs();
   renderPriorityTable(priority);
   initLocalFeatures();
+  wireMainTabs();
+  startPiutangAutoSync();
+  startSalesAutoSync();
 })();
 </script>
 </body>
