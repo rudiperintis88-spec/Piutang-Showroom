@@ -302,7 +302,7 @@
     <div class="meta">
       <div id="refreshRow" style="display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-bottom:6px;">
         <span id="syncStatus" style="font-size:12px; color:var(--ink-faint);">Data per <b style="color:var(--ink)">25 September 2026</b></span>
-        <button id="refreshBtn" title="Tarik data terbaru dari Google Sheets" style="background:var(--panel-3); border:1px solid var(--line); color:var(--ink); border-radius:7px; padding:5px 11px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap;">
+        <button id="refreshBtn" title="Tarik data terbaru dari Google Sheets — update semua tab (Piutang, Ringkasan, Leasing, Penjualan)" style="background:var(--panel-3); border:1px solid var(--line); color:var(--ink); border-radius:7px; padding:5px 11px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap;">
           <span id="refreshIcon">🔄</span> Refresh
         </button>
       </div>
@@ -366,13 +366,8 @@
 
   <div class="tabpane hidden" id="tab-penjualan">
     <div class="penjualanwrap">
-      <div class="pj-sync-row">
-        <div class="penjualan-note" id="penjualanNote">Kumulatif sejak transaksi pertama tercatat</div>
-        <button id="penjualanRefreshBtn" title="Tarik data terbaru dari Google Sheets">
-          <span id="penjualanRefreshIcon">🔄</span> Refresh
-        </button>
-      </div>
-      <div class="penjualan-sync" id="penjualanSync">Menampilkan snapshot terakhir — klik Refresh untuk data terbaru</div>
+      <div class="penjualan-note" id="penjualanNote">Kumulatif sejak transaksi pertama tercatat</div>
+      <div class="penjualan-sync" id="penjualanSync">Menampilkan snapshot terakhir — klik Refresh di atas untuk data terbaru</div>
       <div class="penjualan-grid" id="penjualanGrid"></div>
 
       <div class="pj-subtitle">Penjualan per Bulan <span>2026 · per cabang · jumlah unit</span></div>
@@ -832,7 +827,6 @@
   }
 
   async function fetchSalesData(isAuto) {
-    if (penjualanRefreshBtn) { penjualanRefreshBtn.disabled = true; penjualanRefreshIcon.style.animation = 'spin 0.9s linear infinite'; }
     setSalesSyncStatus('loading', '🔄 Menyinkronkan data penjualan…');
     try {
       const res = await fetch(SALES_CSV_URL, { cache: 'no-store' });
@@ -852,14 +846,8 @@
     } catch (err) {
       console.error('sales sync error', err);
       setSalesSyncStatus('error', `⚠ Gagal sinkron data penjualan (${err.code || 'error'}) — menampilkan data terakhir yang berhasil dimuat.`);
-    } finally {
-      if (penjualanRefreshBtn) { penjualanRefreshBtn.disabled = false; penjualanRefreshIcon.style.animation = 'none'; }
     }
   }
-
-  const penjualanRefreshBtn = document.getElementById('penjualanRefreshBtn');
-  const penjualanRefreshIcon = document.getElementById('penjualanRefreshIcon');
-  penjualanRefreshBtn.addEventListener('click', () => fetchSalesData(false));
 
 
   function wireMainTabs() {
@@ -1256,7 +1244,7 @@
       applyAggregates(agg);
       const now = new Date();
       syncStatusEl.innerHTML = `Disinkron manual <b>${fmtTglLong(now)}, ${fmtTimeShort(now)}</b>`;
-      if (!isAuto) showSyncMessage('success', `✓ Berhasil disinkron dari spreadsheet — ${agg.count} faktur, ${fmtTglLong(now)} pukul ${fmtTimeShort(now)}`);
+      if (!isAuto) showSyncMessage('success', `✓ Semua data diperbarui — piutang ${agg.count} faktur, ${fmtTglLong(now)} pukul ${fmtTimeShort(now)}`);
     } catch (err) {
       handleRefreshError(err, isAuto);
     } finally {
@@ -1276,7 +1264,10 @@
     console.error('refresh error', err);
   }
 
-  refreshBtn.addEventListener('click', () => refreshFromSheet(false));
+  refreshBtn.addEventListener('click', () => {
+    refreshFromSheet(false);
+    fetchSalesData(false);
+  });
 
   /* ---------------- boot ---------------- */
   renderBranchCards(branches);
