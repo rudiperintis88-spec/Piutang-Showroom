@@ -735,74 +735,30 @@
     }).join('');
   }
 
-  /* ---------------- live fetch: sheet "Data" (unit sold log) via JSONP ---------------- */
+  /* ---------------- fetch: Published-to-Web CSV (confirmed reachable for this sheet) ---------------- */
+  const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=860325626&single=true&output=csv';
+  const SALES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=0&single=true&output=csv';
 
-  // Detect whether this sheet's date strings are DAY/MONTH/YEAR or MONTH/DAY/YEAR by
-  // scanning for unambiguous evidence in the data itself (a value > 12 can only be a
-  // day, never a month) — far more reliable than assuming a fixed locale convention,
-  // since guessing wrong silently shuffles records into the wrong months.
-  /* ---------------- Google Sheets access via JSONP (no CORS, no server, single file) ---------------- */
-  // Why JSONP instead of fetch(): loading data through a <script> tag is not subject to
-  // the browser's CORS policy the way fetch()/XHR is, because the browser treats it as
-  // loading a script resource, not a cross-origin data request. Google's own "gviz/tq"
-  // endpoint is designed to support exactly this pattern via the responseHandler
-  // parameter (classic JSONP). This removes the need for any server-side proxy file.
-  const SHEET_ID = '1ul2WqwEb4X66Q6CYdycNvtyaLu08axFkZL75FI-qdmM';
-  const SHEET1_GID = '860325626';
-  const DATA_GID = '0';
-  let jsonpSeq = 0;
-
-  function loadGvizJSONP(gid, range) {
-    return new Promise((resolve, reject) => {
-      const cbName = '__gvizCb' + (jsonpSeq++) + '_' + Date.now();
-      let done = false;
-      const script = document.createElement('script');
-      const timer = setTimeout(() => {
-        if (done) return;
-        done = true;
-        cleanup();
-        reject(Object.assign(new Error('Timeout memuat data dari Google Sheets'), { code: 'TIMEOUT' }));
-      }, 20000);
-      function cleanup() {
-        clearTimeout(timer);
-        try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
-        if (script.parentNode) script.parentNode.removeChild(script);
+  function parseCSVFull(text) {
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i+1] === '"') { field += '"'; i++; }
+          else { inQuotes = false; }
+        } else field += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+        else if (c === '\r') { /* skip */ }
+        else field += c;
       }
-      window[cbName] = (data) => {
-        if (done) return;
-        done = true;
-        cleanup();
-        if (!data || data.status === 'error') {
-          reject(Object.assign(new Error('Google Sheets menolak permintaan'), { code: 'GVIZ_ERROR' }));
-          return;
-        }
-        resolve(data);
-      };
-      script.onerror = () => {
-        if (done) return;
-        done = true;
-        cleanup();
-        reject(Object.assign(new Error('Gagal memuat script dari Google Sheets'), { code: 'SCRIPT_LOAD_FAILED' }));
-      };
-      const rangeParam = range ? `&range=${encodeURIComponent(range)}` : '';
-      script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${gid}${rangeParam}&tqx=out:json;responseHandler=${cbName}`;
-      document.head.appendChild(script);
-    });
-  }
-
-  function gvizCellValue(cell) {
-    if (!cell) return null;
-    const v = cell.v;
-    if (typeof v === 'string') {
-      const m = v.match(/^Date\((\d+),(\d+),(\d+)/);
-      if (m) return new Date(+m[1], +m[2], +m[3]); // gviz month is already 0-indexed
     }
-    return v;
-  }
-
-  function gvizToRows(data) {
-    const rows = (data && data.table && data.table.rows) || [];
-    return rows.map(r => (r.c || []).map(gvizCellValue));
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows;
   }
 
   function cellStr(v) { return v == null ? '' : String(v).trim(); }
@@ -811,6 +767,38 @@
     if (typeof v === 'number') return v;
     const n = Number(String(v).replace(/[^0-9.-]/g, ''));
     return isNaN(n) ? 0 : n;
+  }
+
+  // Detect whether this sheet's date strings are DAY/MONTH/YEAR or MONTH/DAY/YEAR by
+  // scanning for unambiguous evidence in the data itself (a value > 12 can only be a
+  // day, never a month) — far more reliable than assuming a fixed locale convention,
+  // since guessing wrong silently shuffles records into the wrong months.
+  function detectDateFormat(rawStrings) {
+    for (const s of rawStrings) {
+      const m = String(s || '').match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.]\d{2,4}(?!\d)/);
+      if (!m) continue;
+      const a = +m[1], b = +m[2];
+      if (a > 12) return 'DMY';
+      if (b > 12) return 'MDY';
+    }
+    return 'DMY'; // fully ambiguous sample: default to Indonesian convention
+  }
+
+  function parseDateWithFormat(s, format) {
+    s = String(s == null ? '' : s).trim();
+    if (!s) return null;
+    const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?!\d)/);
+    if (m) {
+      let [, a, b, y] = m;
+      y = y.length === 2 ? '20' + y : y;
+      const day = format === 'MDY' ? +b : +a;
+      const month = format === 'MDY' ? +a : +b;
+      const d = new Date(+y, month - 1, day);
+      if (!isNaN(d.getTime())) return d;
+    }
+    const d2 = new Date(s); // fallback: ISO or other unambiguous formats
+    if (!isNaN(d2.getTime())) return d2;
+    return null;
   }
 
   function parseAgingRows(rows) {
@@ -827,8 +815,6 @@
       const nama = row[2];
       const jumlah = cellNum(row[6]);
       if (!nama || !jumlah) continue;
-      const tglRaw = row[5];
-      const tglDisplay = tglRaw instanceof Date ? fmtTglShort(tglRaw) : cellStr(tglRaw);
       out.push({
         noCust: cellStr(row[1]),
         nama: cellStr(nama),
@@ -837,7 +823,7 @@
         cara: cellStr(row[10]),
         leasing: cellStr(row[11]),
         jumlah,
-        tglJtoDisplay: tglDisplay,
+        tglJtoDisplay: cellStr(row[5]),
         hari: cellNum(row[17]),
         salesman: cellStr(row[12]),
         followup: (row[16] && cellStr(row[16]) !== '#N/A') ? cellStr(row[16]) : '',
@@ -854,18 +840,18 @@
       if (row && cellStr(row[0]) === 'No' && cellStr(row[1]) === 'Tanggal') { headerIdx = i; break; }
     }
     if (headerIdx === -1) { const e = new Error('Header sheet Data tidak ditemukan'); e.code = 'HEADER_NOT_FOUND'; throw e; }
+    const dataRows = rows.slice(headerIdx + 1).filter(r => r && r[9]);
+    const dateFormat = detectDateFormat(dataRows.map(r => r[1]));
     const out = [];
-    for (let i = headerIdx + 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (!row) continue;
-      const divisi = row[9];
-      const tgl = row[1];
-      if (!divisi || !(tgl instanceof Date)) continue;
-      out.push({ tanggal: tgl, cara: cellStr(row[7]), divisi: cellStr(divisi), statusFnc: cellStr(row[10]) });
+    for (const row of dataRows) {
+      const tgl = parseDateWithFormat(row[1], dateFormat);
+      if (!tgl) continue;
+      out.push({ tanggal: tgl, cara: cellStr(row[7]), divisi: cellStr(row[9]), statusFnc: cellStr(row[10]) });
     }
     if (!out.length) { const e = new Error('Tidak ada baris data penjualan yang terbaca'); e.code = 'NO_ROWS'; throw e; }
     return out;
   }
+
 
 
 
@@ -923,8 +909,10 @@
   async function fetchSalesData(isAuto) {
     setSalesSyncStatus('loading', '🔄 Menyinkronkan data penjualan…');
     try {
-      const gvizData = await loadGvizJSONP(DATA_GID, 'A5:AZ10000');
-      const rows = gvizToRows(gvizData);
+      const res = await fetch(SALES_CSV_URL, { cache: 'no-store' });
+      if (!res.ok) { const e = new Error('HTTP ' + res.status); e.code = 'HTTP_' + res.status; throw e; }
+      const text = await res.text();
+      const rows = parseCSVFull(text);
       const salesRows = parseSalesRows(rows);
       const agg = computeSalesAggregates(salesRows);
       penjualanData = agg.penjualanData;
@@ -1263,8 +1251,10 @@
     setRefreshLoading(true);
     if (!isAuto) syncMessageEl.style.display = 'none';
     try {
-      const gvizData = await loadGvizJSONP(SHEET1_GID, 'A9:T1000');
-      const rows = gvizToRows(gvizData);
+      const res = await fetch(PUBLISHED_CSV_URL, { cache: 'no-store' });
+      if (!res.ok) { const e = new Error('HTTP ' + res.status); e.code = 'HTTP_' + res.status; throw e; }
+      const text = await res.text();
+      const rows = parseCSVFull(text);
       const agingRows = parseAgingRows(rows);
       const agg = computeAggregates(agingRows);
       applyAggregates(agg);
@@ -1283,8 +1273,8 @@
     let msg = `Gagal menyinkronkan data (${code || 'kesalahan tidak dikenal'}). Coba lagi.`;
     if (code === 'HEADER_NOT_FOUND') msg = 'Format header sheet tidak dikenali — mungkin struktur laporan berubah.';
     else if (code === 'NO_ROWS') msg = 'Tidak ada baris data piutang yang terbaca dari sheet.';
-    else if (code === 'TIMEOUT') msg = 'Google Sheets tidak merespons — periksa koneksi internet lalu coba lagi.';
-    else if (code === 'SCRIPT_LOAD_FAILED' || code === 'GVIZ_ERROR') msg = 'Gagal memuat data dari Google Sheets. Pastikan sheet masih dibagikan sebagai "Anyone with link".';
+    else if (code === 'TypeError' || /fetch/i.test(String(err && err.message))) msg = 'Gagal mengambil data — periksa koneksi internet, atau sheet mungkin tidak lagi bisa diakses publik.';
+    else if (String(code).startsWith('HTTP_')) msg = `Google Sheets menolak permintaan (${code}). Pastikan sheet masih dibagikan sebagai "Anyone with link".`;
     syncStatusEl.innerHTML = `⚠ Gagal sinkron — menampilkan data terakhir`;
     if (!isAuto) showSyncMessage('error', msg);
     console.error('refresh error', err);
