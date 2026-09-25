@@ -110,6 +110,49 @@
 
   /* ---------- priority table ---------- */
   .priowrap { background: var(--panel); border: 1px solid #F0555A3D; border-radius: var(--radius); overflow: hidden; }
+
+  /* leasing table */
+  .leasingwrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  table.leasing-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.leasing-table thead th { text-align: left; font-weight: 500; color: var(--ink-faint); padding: 10px 16px; font-size: 11.5px; border-bottom: 1px solid var(--line); background: var(--panel-2); white-space: nowrap; }
+  table.leasing-table tbody td { padding: 11px 16px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  table.leasing-table tbody tr:last-child td { border-bottom: none; }
+  table.leasing-table tbody tr:hover { background: var(--panel-2); }
+  .leasing-name { font-weight: 600; }
+  .leasing-name .tag { font-size: 10.5px; font-weight: 500; color: var(--ink-faint); margin-left: 6px; }
+  .leasing-bar-cell { min-width: 140px; }
+  .leasing-bar { height: 8px; border-radius: 4px; background: var(--line-soft); overflow: hidden; }
+  .leasing-bar div { height: 100%; background: var(--accent2); border-radius: 4px; }
+  table.leasing-table th.lcol.gatsu { color: var(--gatsu); }
+  table.leasing-table th.lcol.flamboyan { color: var(--flamboyan); }
+  table.leasing-table th.lcol.gagak { color: var(--gagak); }
+  table.leasing-table td.lcell { text-align: center; font-family: var(--mono); font-size: 12.5px; }
+  table.leasing-table td.lcell.zero { color: var(--ink-faint); }
+  table.leasing-table td.lcell .lcount { display: block; font-size: 10.5px; color: var(--ink-faint); font-family: var(--sans); margin-top: 1px; }
+  table.leasing-table tfoot td { padding: 11px 16px; font-weight: 700; border-top: 2px solid var(--line); background: var(--panel-2); }
+
+  /* tabs */
+  .tabbar { display: flex; gap: 6px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .tabbtn { background: none; border: none; color: var(--ink-faint); font-size: 13.5px; font-weight: 600; padding: 9px 4px; margin-right: 18px; cursor: pointer; border-bottom: 2px solid transparent; font-family: var(--sans); }
+  .tabbtn:hover { color: var(--ink-dim); }
+  .tabbtn.active { color: var(--ink); border-bottom-color: var(--accent2); }
+  .tabpane.hidden { display: none; }
+
+  /* per-division detail tables */
+  .division-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .division-grid { grid-template-columns: 1fr; } }
+  .division-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; border-top: 3px solid var(--accent); }
+  .division-card .dhead { padding: 16px 18px 12px; }
+  .division-card .dname { font-family: var(--serif); font-size: 17px; font-weight: 500; }
+  .division-card .dtotal { font-family: var(--mono); font-size: 15px; font-weight: 600; margin-top: 2px; }
+  .division-card .dcount { font-size: 11.5px; color: var(--ink-faint); }
+  table.division-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.division-table th { text-align: left; font-weight: 500; color: var(--ink-faint); padding: 8px 14px; font-size: 10.5px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  table.division-table td { padding: 8px 14px; border-bottom: 1px solid var(--line-soft); }
+  table.division-table tr:last-child td { border-bottom: none; }
+  table.division-table tr.dtotal-row td { font-weight: 700; border-top: 1px solid var(--line); background: var(--panel-2); }
+  table.division-table td.dnum { text-align: right; font-family: var(--mono); }
+  table.division-table td.zero { color: var(--ink-faint); }
   .prio-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 18px 20px; background: var(--b4-bg); border-bottom: 1px solid #F0555A3D; }
   .prio-head .t { display: flex; align-items: center; gap: 10px; }
   .prio-head .t .flag { width: 9px; height: 9px; border-radius: 50%; background: var(--b4); box-shadow: 0 0 0 4px #F0555A22; }
@@ -192,6 +235,7 @@
     .masthead { flex-direction: column; align-items: flex-start; }
     .masthead .meta { text-align: left; }
     table.prio { display: block; overflow-x: auto; }
+    table.leasing-table { display: block; overflow-x: auto; }
   }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>
@@ -231,9 +275,42 @@
     </div>
   </div>
 
-  <!-- BRANCHES -->
-  <div class="stitle"><h2>Piutang per Cabang</h2><span>umur piutang · komposisi nilai</span></div>
-  <div class="branches" id="branchGrid"></div>
+  <!-- PIUTANG: main tabs (Cabang / Ringkasan Gabungan / Leasing per Divisi) -->
+  <div class="stitle"><h2>Piutang</h2><span>per cabang · per leasing</span></div>
+
+  <div class="tabbar" id="mainTabs">
+    <button class="tabbtn active" data-tab="cabang">Piutang per Cabang</button>
+    <button class="tabbtn" data-tab="ringkasan">Ringkasan Gabungan</button>
+    <button class="tabbtn" data-tab="perdivisi">Leasing per Divisi</button>
+  </div>
+
+  <div class="tabpane" id="tab-cabang">
+    <div class="branches" id="branchGrid"></div>
+  </div>
+
+  <div class="tabpane hidden" id="tab-ringkasan">
+    <div class="leasingwrap" id="leasingWrap">
+      <table class="leasing-table">
+        <thead>
+          <tr>
+            <th>Leasing / Metode</th>
+            <th class="lcol gatsu">Gatsu</th>
+            <th class="lcol flamboyan">Flamboyan</th>
+            <th class="lcol gagak">Gagak Hitam</th>
+            <th>Total Faktur</th>
+            <th>Total Nilai (Rp)</th>
+            <th>% dari Total</th>
+          </tr>
+        </thead>
+        <tbody id="leasingBody"></tbody>
+        <tfoot id="leasingFoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="tabpane hidden" id="tab-perdivisi">
+    <div class="division-grid" id="divisionGrid"></div>
+  </div>
 
   <!-- PRIORITY -->
   <div class="stitle"><h2>Prioritas Penagihan</h2><span>faktur dengan umur &gt; 26 hari · klik baris untuk catatan &amp; tugas</span></div>
@@ -303,6 +380,19 @@
     { name:'PT SUTAN INDO ANEKA MOBIL', id:'F0007224SIA', faktur:'000055/FKT/PP/0826', cabang:'flamboyan', cabangLabel:'Flamboyan', metode:'Tunai', jumlah:446600000, jto:'11 Agu 2026', hari:45, sales:'SHINTIA PRIYANTI' },
   ].sort((a,b) => b.hari - a.hari);
 
+  const leasingBreakdown = [
+    { name:'ACC', count:27, sum:6815669997, byBranch:{ gatsu:{count:5,sum:1288830000}, flamboyan:{count:8,sum:1796599997}, gagak:{count:14,sum:3730240000} } },
+    { name:'TAF', count:30, sum:6341174830, byBranch:{ gatsu:{count:11,sum:2075168900}, flamboyan:{count:3,sum:638340000}, gagak:{count:16,sum:3627665930} } },
+    { name:'Tunai (Cash)', count:9, sum:3221600000, byBranch:{ gatsu:{count:2,sum:945900000}, flamboyan:{count:6,sum:2032500000}, gagak:{count:1,sum:243200000} } },
+    { name:'KKB', count:8, sum:2752353353, byBranch:{ gatsu:{count:7,sum:2536229191}, gagak:{count:1,sum:216124162} } },
+    { name:'BUANA', count:5, sum:1375032000, byBranch:{ gatsu:{count:2,sum:582805000}, flamboyan:{count:1,sum:148300000}, gagak:{count:2,sum:643927000} } },
+    { name:'ADM', count:1, sum:1262600000, byBranch:{ flamboyan:{count:1,sum:1262600000} } },
+    { name:'MTF', count:3, sum:772365000, byBranch:{ gagak:{count:3,sum:772365000} } },
+    { name:'MUF', count:2, sum:442329000, byBranch:{ gagak:{count:2,sum:442329000} } },
+    { name:'BRIM', count:1, sum:237021860, byBranch:{ gatsu:{count:1,sum:237021860} } },
+    { name:'IMFS', count:1, sum:157500000, byBranch:{ flamboyan:{count:1,sum:157500000} } },
+  ].map(l => ({ ...l, pct: l.sum / 23377646040 })).sort((a,b) => b.sum - a.sum);
+
   /* ---------------- dynamic aggregation engine (shared by initial render & refresh) ---------------- */
   const BRANCH_META = {
     'Gatsu': { key:'gatsu', addr:'Jl. Gatot Subroto', color:'var(--gatsu)' },
@@ -355,7 +445,22 @@
       return { label: bd.label, count: list.length, sum: list.reduce((s,r) => s + r.jumlah, 0) };
     });
 
-    return { branches: branchesOut, priority: priorityOut, totalAll, count: rows.length, overallBuckets };
+    const leasingMap = {};
+    rows.forEach(r => {
+      const key = (r.cara === 'Tunai' || !r.leasing) ? 'Tunai (Cash)' : r.leasing;
+      if (!leasingMap[key]) leasingMap[key] = { name: key, count: 0, sum: 0, byBranch: {} };
+      leasingMap[key].count += 1;
+      leasingMap[key].sum += r.jumlah;
+      const bkey = (BRANCH_META[r.divisi] || {}).key || 'gatsu';
+      if (!leasingMap[key].byBranch[bkey]) leasingMap[key].byBranch[bkey] = { count: 0, sum: 0 };
+      leasingMap[key].byBranch[bkey].count += 1;
+      leasingMap[key].byBranch[bkey].sum += r.jumlah;
+    });
+    const leasingBreakdown = Object.values(leasingMap)
+      .map(l => ({ ...l, pct: totalAll ? (l.sum / totalAll) : 0 }))
+      .sort((a,b) => b.sum - a.sum);
+
+    return { branches: branchesOut, priority: priorityOut, totalAll, count: rows.length, overallBuckets, leasingBreakdown };
   }
 
   /* ---------------- render branch cards ---------------- */
@@ -373,6 +478,121 @@
       grid.appendChild(card);
     });
   }
+
+  /* ---------------- render leasing table (matrix: leasing x cabang) ---------------- */
+  const leasingBody = document.getElementById('leasingBody');
+  const leasingFoot = document.getElementById('leasingFoot');
+  const BRANCH_KEYS = ['gatsu', 'flamboyan', 'gagak'];
+
+  function renderLeasingTable(list) {
+    leasingBody.innerHTML = '';
+    const isCash0 = false;
+    list.forEach(l => {
+      const tr = document.createElement('tr');
+      const isCash = l.name === 'Tunai (Cash)';
+      const branchCells = BRANCH_KEYS.map(bk => {
+        const b = l.byBranch[bk];
+        if (!b || !b.sum) return `<td class="lcell zero">–</td>`;
+        return `<td class="lcell">${fmtRp(b.sum)}<span class="lcount">${b.count} faktur</span></td>`;
+      }).join('');
+      tr.innerHTML = `
+        <td><span class="leasing-name">${esc(l.name)}</span>${isCash ? '<span class="tag">langsung, tanpa leasing</span>' : ''}</td>
+        ${branchCells}
+        <td style="text-align:center">${l.count}</td>
+        <td class="jumlah-mono">${fmtRp(l.sum)}</td>
+        <td>${(l.pct*100).toFixed(1)}%</td>`;
+      leasingBody.appendChild(tr);
+    });
+
+    // footer totals per column
+    const totals = { gatsu: {c:0,s:0}, flamboyan: {c:0,s:0}, gagak: {c:0,s:0} };
+    let totCount = 0, totSum = 0;
+    list.forEach(l => {
+      totCount += l.count; totSum += l.sum;
+      BRANCH_KEYS.forEach(bk => {
+        const b = l.byBranch[bk];
+        if (b) { totals[bk].c += b.count; totals[bk].s += b.sum; }
+      });
+    });
+    const footBranchCells = BRANCH_KEYS.map(bk => `<td style="text-align:center; font-family:var(--mono)">${fmtRp(totals[bk].s)}</td>`).join('');
+    leasingFoot.innerHTML = `<tr>
+      <td>Total</td>
+      ${footBranchCells}
+      <td style="text-align:center">${totCount}</td>
+      <td class="jumlah-mono">${fmtRp(totSum)}</td>
+      <td>100.0%</td>
+    </tr>`;
+  }
+
+  /* ---------------- render "Leasing per Divisi" tab: 3 cards, one per branch ---------------- */
+  const divisionGrid = document.getElementById('divisionGrid');
+  const BRANCH_DISPLAY = {
+    gatsu: { label: 'Gatsu', color: 'var(--gatsu)' },
+    flamboyan: { label: 'Flamboyan', color: 'var(--flamboyan)' },
+    gagak: { label: 'Gagak Hitam', color: 'var(--gagak)' },
+  };
+
+  function renderDivisionCards(leasingList, branchTotals) {
+    divisionGrid.innerHTML = '';
+    BRANCH_KEYS.forEach(bk => {
+      const meta = BRANCH_DISPLAY[bk];
+      const bt = branchTotals[bk] || { count: 0, sum: 0 };
+      const card = document.createElement('div');
+      card.className = 'division-card';
+      card.style.setProperty('--accent', meta.color);
+
+      const rows = leasingList.map(l => {
+        const b = l.byBranch[bk];
+        const count = b ? b.count : 0;
+        const sum = b ? b.sum : 0;
+        const pct = bt.sum ? (sum / bt.sum * 100) : 0;
+        return `<tr>
+          <td>${esc(l.name)}</td>
+          <td class="dnum ${!count?'zero':''}">${count || '–'}</td>
+          <td class="dnum ${!sum?'zero':''}">${sum ? fmtRp(sum) : '–'}</td>
+          <td class="dnum ${!sum?'zero':''}">${sum ? pct.toFixed(1)+'%' : '–'}</td>
+        </tr>`;
+      }).join('');
+
+      card.innerHTML = `
+        <div class="dhead">
+          <div class="dname">${meta.label}</div>
+          <div class="dtotal">${fmtRp(bt.sum)}</div>
+          <div class="dcount">${bt.count} faktur</div>
+        </div>
+        <table class="division-table">
+          <thead><tr><th>Leasing</th><th style="text-align:right">Faktur</th><th style="text-align:right">Nilai</th><th style="text-align:right">%</th></tr></thead>
+          <tbody>${rows}
+            <tr class="dtotal-row"><td>Total</td><td class="dnum">${bt.count}</td><td class="dnum">${fmtRp(bt.sum)}</td><td class="dnum">100.0%</td></tr>
+          </tbody>
+        </table>`;
+      divisionGrid.appendChild(card);
+    });
+  }
+
+  function computeBranchTotalsFromLeasing(leasingList) {
+    const totals = { gatsu: {count:0,sum:0}, flamboyan: {count:0,sum:0}, gagak: {count:0,sum:0} };
+    leasingList.forEach(l => {
+      BRANCH_KEYS.forEach(bk => {
+        const b = l.byBranch[bk];
+        if (b) { totals[bk].count += b.count; totals[bk].sum += b.sum; }
+      });
+    });
+    return totals;
+  }
+
+  function wireMainTabs() {
+    const tabs = document.querySelectorAll('#mainTabs .tabbtn');
+    const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi') };
+    tabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabs.forEach(b => b.classList.toggle('active', b === btn));
+        Object.keys(panes).forEach(key => panes[key].classList.toggle('hidden', key !== btn.dataset.tab));
+      });
+    });
+  }
+
+
   /* ---------------- render priority table with detail rows ---------------- */
   const prioBody = document.getElementById('prioBody');
   let detailMeta = {};
@@ -641,6 +861,8 @@
       </div>`).join('');
 
     renderBranchCards(agg.branches);
+    renderLeasingTable(agg.leasingBreakdown);
+    renderDivisionCards(agg.leasingBreakdown, computeBranchTotalsFromLeasing(agg.leasingBreakdown));
     renderPriorityTable(agg.priority);
 
     const prioCount = agg.priority.length;
@@ -776,6 +998,9 @@
 
   /* ---------------- boot ---------------- */
   renderBranchCards(branches);
+  renderLeasingTable(leasingBreakdown);
+  renderDivisionCards(leasingBreakdown, computeBranchTotalsFromLeasing(leasingBreakdown));
+  wireMainTabs();
   renderPriorityTable(priority);
   initLocalFeatures();
 })();
