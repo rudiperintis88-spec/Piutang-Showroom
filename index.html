@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard Piutang — PT Perintis Perkasa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #11151A;
+    --bg-2: #0C0F13;
+    --panel: #181D23;
+    --panel-2: #1E252C;
+    --panel-3: #232B33;
+    --line: #2A323B;
+    --line-soft: #232A31;
+    --ink: #ECEFF2;
+    --ink-dim: #9CA7B3;
+    --ink-faint: #5E6874;
+
+    --gatsu: #5B9CFF;
+    --gatsu-dim: #5B9CFF33;
+    --flamboyan: #FF8A4C;
+    --flamboyan-dim: #FF8A4C33;
+    --gagak: #33C6BE;
+    --gagak-dim: #33C6BE33;
+
+    --b1: #4ADE80;
+    --b2: #F2C94C;
+    --b3: #FB923C;
+    --b4: #F0555A;
+    --b4-bg: #F0555A1A;
+    --accent2: #8B7CFF;
+
+    --radius: 10px;
+    --serif: 'Fraunces', serif;
+    --sans: 'Inter', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse 900px 500px at 15% -10%, #5B9CFF14, transparent),
+      radial-gradient(ellipse 900px 500px at 100% 0%, #FF8A4C10, transparent);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, textarea, input, select { font-family: var(--sans); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 28px 90px; }
+
+  /* ---------- header ---------- */
+  .masthead {
+    display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;
+    padding-bottom: 26px; border-bottom: 1px solid var(--line); margin-bottom: 34px;
+  }
+  .masthead .co { font-size: 13px; color: var(--ink-dim); letter-spacing: .01em; margin-bottom: 6px; }
+  .masthead h1 { font-family: var(--serif); font-weight: 500; font-size: 34px; line-height: 1.15; margin: 0; letter-spacing: -0.01em; }
+  .masthead .meta { text-align: right; font-size: 13px; color: var(--ink-dim); }
+  .masthead .meta b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- hero ---------- */
+  .hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 22px; margin-bottom: 30px; }
+  @media (max-width: 780px) { .hero { grid-template-columns: 1fr; } }
+  .hero-total { background: linear-gradient(155deg, var(--panel-2), var(--panel)); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px 30px; position: relative; overflow: hidden; }
+  .hero-total .label { font-size: 13px; color: var(--ink-dim); margin-bottom: 10px; }
+  .hero-total .num { font-family: var(--serif); font-weight: 500; font-size: clamp(32px, 5vw, 46px); letter-spacing: -0.01em; margin: 0 0 4px; }
+  .hero-total .sub { font-size: 13.5px; color: var(--ink-dim); }
+  .hero-total .sub b { color: var(--ink); font-family: var(--mono); font-weight: 500; }
+  .hero-buckets { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .bchip { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; position: relative; }
+  .bchip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 7px; }
+  .bchip .name { font-size: 12.5px; color: var(--ink-dim); }
+  .bchip .amt { font-family: var(--mono); font-size: 17px; font-weight: 600; margin-top: 6px; }
+  .bchip .cnt { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+  .bchip.crit { background: var(--b4-bg); border-color: #F0555A44; }
+  .bchip.crit .amt { color: var(--b4); }
+
+  /* ---------- section title ---------- */
+  .stitle { display: flex; align-items: baseline; justify-content: space-between; margin: 40px 0 16px; flex-wrap: wrap; gap: 8px; }
+  .stitle h2 { font-family: var(--serif); font-weight: 500; font-size: 21px; margin: 0; }
+  .stitle span { font-size: 12.5px; color: var(--ink-faint); font-family: var(--mono); }
+
+  /* ---------- branch cards ---------- */
+  .branches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .branches { grid-template-columns: 1fr; } }
+  .bcard { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; border-top: 3px solid var(--accent); }
+  .bcard .bname { font-family: var(--serif); font-size: 18px; font-weight: 500; margin-bottom: 2px; }
+  .bcard .baddr { font-size: 12px; color: var(--ink-faint); margin-bottom: 16px; }
+  .bcard .btotal { font-family: var(--mono); font-size: 24px; font-weight: 600; }
+  .bcard .bcount { font-size: 12.5px; color: var(--ink-dim); margin-bottom: 16px; }
+  .bcard .barrow { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line-soft); margin-bottom: 10px; }
+  .bcard .barrow div { height: 100%; }
+  .bcard .blegend { display: flex; flex-direction: column; gap: 6px; }
+  .blegend .row { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-dim); }
+  .blegend .row .k { display: flex; align-items: center; gap: 6px; }
+  .blegend .row .k .sq { width: 7px; height: 7px; border-radius: 2px; }
+  .blegend .row .v { font-family: var(--mono); color: var(--ink); }
+  .blegend .row.empty { opacity: .35; }
+
+  /* ---------- priority table ---------- */
+  .priowrap { background: var(--panel); border: 1px solid #F0555A3D; border-radius: var(--radius); overflow: hidden; }
+  .prio-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 18px 20px; background: var(--b4-bg); border-bottom: 1px solid #F0555A3D; }
+  .prio-head .t { display: flex; align-items: center; gap: 10px; }
+  .prio-head .t .flag { width: 9px; height: 9px; border-radius: 50%; background: var(--b4); box-shadow: 0 0 0 4px #F0555A22; }
+  .prio-head h2 { font-family: var(--serif); font-size: 19px; font-weight: 500; margin: 0; color: #FFD3D5; }
+  .prio-head .sum { font-size: 13px; color: var(--ink-dim); }
+  .prio-head .sum b { font-family: var(--mono); color: #FFD3D5; font-weight: 600; }
+
+  table.prio { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.prio thead th { text-align: left; font-weight: 500; color: var(--ink-faint); padding: 10px 16px; font-size: 11.5px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.prio tbody td { padding: 13px 16px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  table.prio tbody tr.rowmain:hover { background: var(--panel-2); cursor: pointer; }
+  .cust-name { font-weight: 600; }
+  .cust-id { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  .pill { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .pill.gatsu { background: var(--gatsu-dim); color: var(--gatsu); }
+  .pill.flamboyan { background: var(--flamboyan-dim); color: var(--flamboyan); }
+  .pill.gagak { background: var(--gagak-dim); color: var(--gagak); }
+  .hari-badge { font-family: var(--mono); font-weight: 700; font-size: 13px; color: var(--b4); }
+  .jumlah-mono { font-family: var(--mono); font-weight: 600; }
+  .cara { font-size: 11.5px; color: var(--ink-dim); }
+  .cara.tunai { color: var(--b4); font-weight: 600; }
+  .expand-btn { background: none; border: 1px solid var(--line); color: var(--ink-dim); border-radius: 6px; width: 26px; height: 26px; font-size: 13px; cursor: pointer; transition: transform .15s; }
+  .expand-btn.open { transform: rotate(45deg); color: var(--ink); }
+  .note-row td { padding-top: 0; padding-bottom: 12px; }
+  .note-row .note { font-size: 11.5px; color: var(--ink-faint); background: var(--bg-2); border-radius: 6px; padding: 6px 10px; display: inline-block; }
+
+  /* detail (notes+tasks) row */
+  tr.detail-row td { background: var(--bg-2); padding: 0; border-bottom: 1px solid var(--line); }
+  tr.detail-row.hidden { display: none; }
+  .detail-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  @media (max-width: 760px) { .detail-inner { grid-template-columns: 1fr; } }
+  .detail-col { padding: 16px 20px; border-right: 1px solid var(--line); }
+  .detail-col:last-child { border-right: none; border-top: 1px solid var(--line); }
+  @media (max-width: 760px) { .detail-col { border-right: none; border-top: 1px solid var(--line); } .detail-col:first-child { border-top: none; } }
+  .detail-h { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-faint); margin-bottom: 10px; font-weight: 600; }
+  .note-item { padding: 8px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+  .note-item:last-child { border-bottom: none; }
+  .note-item .meta { font-size: 11px; color: var(--ink-faint); margin-bottom: 3px; }
+  .note-item .meta b { color: var(--ink-dim); }
+  .note-empty, .task-empty { font-size: 12.5px; color: var(--ink-faint); padding: 6px 0; }
+  .note-form, .task-form { display: flex; gap: 6px; margin-top: 10px; }
+  .note-form textarea { flex: 1; background: var(--panel-3); border: 1px solid var(--line); border-radius: 6px; color: var(--ink); padding: 7px 9px; font-size: 12.5px; resize: none; min-height: 34px; }
+  .note-form button, .task-form button { background: var(--accent2); border: none; color: #fff; border-radius: 6px; padding: 0 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .task-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+  .task-item:last-child { border-bottom: none; }
+  .task-item input[type=checkbox] { margin-top: 3px; accent-color: var(--accent2); width: 15px; height: 15px; cursor: pointer; }
+  .task-item .txt { flex: 1; }
+  .task-item.done .txt .title { text-decoration: line-through; color: var(--ink-faint); }
+  .task-item .title { font-weight: 500; }
+  .task-item .sub { font-size: 11px; color: var(--ink-faint); margin-top: 1px; }
+  .task-form input[type=text] { background: var(--panel-3); border: 1px solid var(--line); border-radius: 6px; color: var(--ink); padding: 7px 9px; font-size: 12.5px; }
+  .task-form .ttitle { flex: 2; }
+  .task-form .tassignee { flex: 1; min-width: 90px; }
+
+  /* ---------- general tasks panel ---------- */
+  .taskpanel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .taskpanel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+  .tp-filters { display: flex; gap: 6px; }
+  .tp-filters button { background: var(--panel-3); border: 1px solid var(--line); color: var(--ink-dim); border-radius: 20px; padding: 5px 13px; font-size: 12px; cursor: pointer; }
+  .tp-filters button.active { background: var(--accent2); color: #fff; border-color: transparent; }
+  .gtask-form { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .gtask-form input { background: var(--panel-3); border: 1px solid var(--line); border-radius: 7px; color: var(--ink); padding: 9px 12px; font-size: 13px; }
+  .gtask-form .gtitle { flex: 2; min-width: 200px; }
+  .gtask-form .gassignee { flex: 1; min-width: 120px; }
+  .gtask-form button { background: var(--accent2); border: none; color: #fff; border-radius: 7px; padding: 0 16px; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .gtask-list { display: flex; flex-direction: column; }
+  .gtask-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+  .gtask-item:last-child { border-bottom: none; }
+  .gtask-item input[type=checkbox] { margin-top: 3px; accent-color: var(--accent2); width: 16px; height: 16px; cursor: pointer; }
+  .gtask-item .title { font-weight: 500; font-size: 13.5px; }
+  .gtask-item.done .title { text-decoration: line-through; color: var(--ink-faint); }
+  .gtask-item .sub { font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
+  .gtask-item .del { margin-left: auto; background: none; border: none; color: var(--ink-faint); cursor: pointer; font-size: 12px; padding: 4px; }
+  .gtask-item .del:hover { color: var(--b4); }
+
+  footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-faint); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 28px 16px 90px; }
+    .masthead { flex-direction: column; align-items: flex-start; }
+    .masthead .meta { text-align: left; }
+    table.prio { display: block; overflow-x: auto; }
+  }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div>
+      <div class="co">PT Perintis Perkasa, Medan</div>
+      <h1>Dashboard Piutang per Cabang</h1>
+    </div>
+    <div class="meta">
+      <div id="refreshRow" style="display:flex; align-items:center; gap:8px; justify-content:flex-end; margin-bottom:6px;">
+        <span id="syncStatus" style="font-size:12px; color:var(--ink-faint);">Data per <b style="color:var(--ink)">25 September 2026</b></span>
+        <button id="refreshBtn" title="Tarik data terbaru dari Google Sheets" style="background:var(--panel-3); border:1px solid var(--line); color:var(--ink); border-radius:7px; padding:5px 11px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap;">
+          <span id="refreshIcon">🔄</span> Refresh
+        </button>
+      </div>
+      Sumber: Laporan Piutang Per Nama (<span id="faktCountLabel">87</span> faktur)
+    </div>
+  </div>
+  <div id="syncMessage" style="display:none; margin:-18px 0 20px; padding:10px 14px; border-radius:8px; font-size:12.5px;"></div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-total">
+      <div class="label">Total piutang berjalan — 3 cabang</div>
+      <div class="num" id="heroTotal">Rp 23.377.646.040</div>
+      <div class="sub" id="heroSub">dari <b>87</b> faktur / unit &nbsp;·&nbsp; rata-rata <b>Rp 268.708.575</b> per unit</div>
+    </div>
+    <div class="hero-buckets" id="heroBuckets">
+      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b1)"></span>1–7 hari</span><div class="amt">Rp 17,93 M</div><div class="cnt">67 faktur</div></div>
+      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b2)"></span>8–14 hari</span><div class="amt">Rp 3,17 M</div><div class="cnt">14 faktur</div></div>
+      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b3)"></span>15–26 hari</span><div class="amt">Rp 408,5 Jt</div><div class="cnt">2 faktur</div></div>
+      <div class="bchip crit"><span class="name"><span class="dot" style="background:var(--b4)"></span>&gt; 26 hari</span><div class="amt">Rp 1,87 M</div><div class="cnt">4 faktur · prioritas tagih</div></div>
+    </div>
+  </div>
+
+  <!-- BRANCHES -->
+  <div class="stitle"><h2>Piutang per Cabang</h2><span>umur piutang · komposisi nilai</span></div>
+  <div class="branches" id="branchGrid"></div>
+
+  <!-- PRIORITY -->
+  <div class="stitle"><h2>Prioritas Penagihan</h2><span>faktur dengan umur &gt; 26 hari · klik baris untuk catatan &amp; tugas</span></div>
+  <div class="priowrap">
+    <div class="prio-head">
+      <div class="t"><span class="flag"></span><h2 id="prioHeadCount">4 faktur butuh tindak lanjut segera</h2></div>
+      <div class="sum" id="prioHeadSum">total tertunggak <b>Rp 1.870.500.000</b> &nbsp;·&nbsp; 2 debitur</div>
+    </div>
+    <table class="prio">
+      <thead>
+        <tr>
+          <th></th><th>Debitur</th><th>No. Faktur</th><th>Cabang</th><th>Metode</th>
+          <th>Jumlah</th><th>Tgl. Jatuh Tempo</th><th>Umur</th><th>Sales PIC</th>
+        </tr>
+      </thead>
+      <tbody id="prioBody"></tbody>
+    </table>
+  </div>
+
+  <!-- GENERAL TASKS -->
+  <div class="stitle"><h2>Tugas Tim Penagihan</h2><span>tidak terikat faktur tertentu</span></div>
+  <div class="taskpanel">
+    <div class="taskpanel-head">
+      <div class="tp-filters" id="tpFilters">
+        <button data-f="all" class="active">Semua</button>
+        <button data-f="todo">Belum selesai</button>
+        <button data-f="done">Selesai</button>
+      </div>
+    </div>
+    <form class="gtask-form" id="gtaskForm">
+      <input class="gtitle" type="text" placeholder="Tugas baru… (mis. rekap ulang aging mingguan)" required>
+      <input class="gassignee" type="text" placeholder="PIC (opsional)">
+      <button type="submit">+ Tambah</button>
+    </form>
+    <div class="gtask-list" id="gtaskList"><div class="task-empty">Memuat tugas…</div></div>
+  </div>
+
+  <footer>
+    <span>Dibuat dari "PP Laporan Piutang Per Nama 2026.xlsx" (Google Sheets) — tombol Refresh menarik data langsung dari sheet publik (view-only); catatan &amp; tugas tersimpan di browser perangkat ini saja (tidak sinkron antar-perangkat/tim).</span>
+    <span>Gatsu · Flamboyan · Gagak Hitam</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const fmtRp = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+  const slug = s => String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g, '-').slice(0,150);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  /* ---------------- static report data ---------------- */
+  const branches = [
+    { key:'gatsu', name:'Gatsu', addr:'Jl. Gatot Subroto', color:'var(--gatsu)', total:7665954951, count:28,
+      buckets:[ {label:'1–7 hari',count:20,sum:5629619591,color:'var(--b1)'}, {label:'8–14 hari',count:5,sum:846625360,color:'var(--b2)'},
+                {label:'15–26 hari',count:1,sum:243810000,color:'var(--b3)'}, {label:'> 26 hari',count:2,sum:945900000,color:'var(--b4)'} ] },
+    { key:'flamboyan', name:'Flamboyan', addr:'Jl. Flamboyan Raya', color:'var(--flamboyan)', total:6035839997, count:20,
+      buckets:[ {label:'1–7 hari',count:14,sum:4174439997,color:'var(--b1)'}, {label:'8–14 hari',count:3,sum:772100000,color:'var(--b2)'},
+                {label:'15–26 hari',count:1,sum:164700000,color:'var(--b3)'}, {label:'> 26 hari',count:2,sum:924600000,color:'var(--b4)'} ] },
+    { key:'gagak', name:'Gagak Hitam', addr:'Jl. Gagak Hitam', color:'var(--gagak)', total:9675851092, count:39,
+      buckets:[ {label:'1–7 hari',count:33,sum:8129036092,color:'var(--b1)'}, {label:'8–14 hari',count:6,sum:1546815000,color:'var(--b2)'},
+                {label:'15–26 hari',count:0,sum:0,color:'var(--b3)'}, {label:'> 26 hari',count:0,sum:0,color:'var(--b4)'} ] },
+  ];
+
+  const priority = [
+    { name:'PT.GO RENTAL', id:'A0010662GOR', faktur:'000007/FKT/PP/0826', cabang:'gatsu', cabangLabel:'Gatsu', metode:'Tunai', jumlah:472950000, jto:'03 Agu 2026', hari:53, sales:'SALINDO DOMINGGOS R.' },
+    { name:'PT.GO RENTAL', id:'A0010662GOR', faktur:'000026/FKT/PP/0826', cabang:'gatsu', cabangLabel:'Gatsu', metode:'Tunai', jumlah:472950000, jto:'06 Agu 2026', hari:50, sales:'SALINDO DOMINGGOS R.' },
+    { name:'PT SUTAN INDO ANEKA MOBIL', id:'F0007224SIA', faktur:'000075/FKT/PP/0826', cabang:'flamboyan', cabangLabel:'Flamboyan', metode:'Tunai', jumlah:478000000, jto:'13 Agu 2026', hari:43, sales:'SHINTIA PRIYANTI' },
+    { name:'PT SUTAN INDO ANEKA MOBIL', id:'F0007224SIA', faktur:'000055/FKT/PP/0826', cabang:'flamboyan', cabangLabel:'Flamboyan', metode:'Tunai', jumlah:446600000, jto:'11 Agu 2026', hari:45, sales:'SHINTIA PRIYANTI' },
+  ].sort((a,b) => b.hari - a.hari);
+
+  /* ---------------- dynamic aggregation engine (shared by initial render & refresh) ---------------- */
+  const BRANCH_META = {
+    'Gatsu': { key:'gatsu', addr:'Jl. Gatot Subroto', color:'var(--gatsu)' },
+    'Flamboyan': { key:'flamboyan', addr:'Jl. Flamboyan Raya', color:'var(--flamboyan)' },
+    'Gagak Hitam': { key:'gagak', addr:'Jl. Gagak Hitam', color:'var(--gagak)' },
+  };
+  const BRANCH_ORDER = ['Gatsu','Flamboyan','Gagak Hitam'];
+  const BUCKET_DEFS = [
+    { label:'1–7 hari', color:'var(--b1)', test: h => h<=7 },
+    { label:'8–14 hari', color:'var(--b2)', test: h => h>7 && h<=14 },
+    { label:'15–26 hari', color:'var(--b3)', test: h => h>14 && h<=26 },
+    { label:'> 26 hari', color:'var(--b4)', test: h => h>26 },
+  ];
+  const MONTHS_ID_LONG = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  function fmtTglLong(d) { return `${d.getDate()} ${MONTHS_ID_LONG[d.getMonth()]} ${d.getFullYear()}`; }
+  function fmtTimeShort(d) { return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+  function fmtShortRp(n) {
+    if (n >= 1e9) return 'Rp ' + (n/1e9).toFixed(2).replace('.', ',') + ' M';
+    if (n >= 1e6) return 'Rp ' + Math.round(n/1e6).toLocaleString('id-ID') + ' Jt';
+    return fmtRp(n);
+  }
+  function cleanSalesmanFull(s) {
+    if (!s) return '-';
+    const parts = String(s).split('=');
+    return parts.length > 1 ? parts[1].trim() : parts[0].trim();
+  }
+
+  function computeAggregates(rows) {
+    const branchesOut = BRANCH_ORDER.map(name => {
+      const meta = BRANCH_META[name] || { key: slug(name).toLowerCase(), addr:'', color:'var(--gatsu)' };
+      const sub = rows.filter(r => r.divisi === name);
+      const total = sub.reduce((s,r) => s + r.jumlah, 0);
+      const bks = BUCKET_DEFS.map(bd => {
+        const list = sub.filter(r => bd.test(r.hari));
+        return { label: bd.label, color: bd.color, count: list.length, sum: list.reduce((s,r) => s + r.jumlah, 0) };
+      });
+      return { key: meta.key, name, addr: meta.addr, color: meta.color, total, count: sub.length, buckets: bks };
+    });
+
+    const priorityOut = rows.filter(r => r.hari > 26).sort((a,b) => b.hari - a.hari).map(r => ({
+      name: r.nama, id: r.noCust, faktur: r.faktur,
+      cabang: (BRANCH_META[r.divisi] || {}).key || 'gatsu', cabangLabel: r.divisi || '-',
+      metode: r.cara, jumlah: r.jumlah, jto: r.tglJtoDisplay || '-', hari: r.hari,
+      sales: cleanSalesmanFull(r.salesman),
+    }));
+
+    const totalAll = rows.reduce((s,r) => s + r.jumlah, 0);
+    const overallBuckets = BUCKET_DEFS.map(bd => {
+      const list = rows.filter(r => bd.test(r.hari));
+      return { label: bd.label, count: list.length, sum: list.reduce((s,r) => s + r.jumlah, 0) };
+    });
+
+    return { branches: branchesOut, priority: priorityOut, totalAll, count: rows.length, overallBuckets };
+  }
+
+  /* ---------------- render branch cards ---------------- */
+  const grid = document.getElementById('branchGrid');
+  function renderBranchCards(list) {
+    grid.innerHTML = '';
+    list.forEach(b => {
+      const card = document.createElement('div');
+      card.className = 'bcard';
+      card.style.setProperty('--accent', b.color);
+      const barSegs = b.buckets.map(bk => { const pct = b.total ? (bk.sum/b.total*100) : 0; return pct>0 ? `<div style="width:${pct}%; background:${bk.color}"></div>` : ''; }).join('');
+      const legend = b.buckets.map(bk => `<div class="row ${bk.count===0?'empty':''}"><span class="k"><span class="sq" style="background:${bk.color}"></span>${bk.label}</span><span class="v">${bk.count} · ${fmtRp(bk.sum)}</span></div>`).join('');
+      card.innerHTML = `<div class="bname">${b.name}</div><div class="baddr">${b.addr}</div><div class="btotal">${fmtRp(b.total)}</div>
+        <div class="bcount">${b.count} faktur tertunggak</div><div class="barrow">${barSegs}</div><div class="blegend">${legend}</div>`;
+      grid.appendChild(card);
+    });
+  }
+  /* ---------------- render priority table with detail rows ---------------- */
+  const prioBody = document.getElementById('prioBody');
+  let detailMeta = {};
+
+  function renderPriorityTable(list) {
+    prioBody.innerHTML = '';
+    detailMeta = {};
+    list.forEach(r => { detailMeta[slug(r.faktur)] = r; });
+
+    list.forEach(r => {
+    const fslug = slug(r.faktur);
+    const tr = document.createElement('tr');
+    tr.className = 'rowmain';
+    tr.dataset.faktur = fslug;
+    tr.innerHTML = `
+      <td><button class="expand-btn" data-toggle="${fslug}">+</button></td>
+      <td><div class="cust-name">${esc(r.name)}</div><div class="cust-id">${esc(r.id)}</div></td>
+      <td class="jumlah-mono">${esc(r.faktur)}</td>
+      <td><span class="pill ${r.cabang}">${esc(r.cabangLabel)}</span></td>
+      <td class="cara ${r.metode==='Tunai'?'tunai':''}">${esc(r.metode)}${r.metode==='Tunai'?' (langsung)':''}</td>
+      <td class="jumlah-mono">${fmtRp(r.jumlah)}</td>
+      <td>${esc(r.jto)}</td>
+      <td class="hari-badge">${r.hari} hr</td>
+      <td>${esc(r.sales)}</td>`;
+    tr.addEventListener('click', (e) => { if (e.target.tagName !== 'BUTTON') toggleDetail(fslug); });
+    prioBody.appendChild(tr);
+
+    const detailTr = document.createElement('tr');
+    detailTr.className = 'detail-row hidden';
+    detailTr.dataset.faktur = fslug;
+    const td = document.createElement('td');
+    td.colSpan = 9;
+    td.innerHTML = `
+      <div class="detail-inner">
+        <div class="detail-col">
+          <div class="detail-h">Catatan — ${esc(r.faktur)}</div>
+          <div class="note-list" data-notes="${fslug}"><div class="note-empty">Memuat…</div></div>
+          <form class="note-form" data-note-form="${fslug}">
+            <textarea placeholder="Tulis catatan follow-up…" required></textarea>
+            <button type="submit">Kirim</button>
+          </form>
+        </div>
+        <div class="detail-col">
+          <div class="detail-h">Tugas terkait faktur ini</div>
+          <div class="task-list" data-tasks="${fslug}"><div class="task-empty">Memuat…</div></div>
+          <form class="task-form" data-task-form="${fslug}">
+            <input type="text" class="ttitle" placeholder="Tugas… (mis. telepon debitur)" required>
+            <input type="text" class="tassignee" placeholder="PIC" value="${esc(r.sales.split(' ')[0])}">
+            <button type="submit">+ Tugas</button>
+          </form>
+        </div>
+      </div>`;
+    detailTr.appendChild(td);
+    prioBody.appendChild(detailTr);
+    });
+
+    bindFakturForms();
+    renderAllNotes();
+    renderAllFakturTasks();
+  }
+
+  function toggleDetail(fslug) {
+    const row = prioBody.querySelector(`tr.detail-row[data-faktur="${fslug}"]`);
+    const btn = prioBody.querySelector(`button[data-toggle="${fslug}"]`);
+    const willOpen = row.classList.contains('hidden');
+    row.classList.toggle('hidden');
+    btn.classList.toggle('open', willOpen);
+  }
+
+  /* ---------------- notes CSV escape not needed since Rupiah fine ---------------- */
+
+  /* ================= LOCAL STORAGE: catatan & tugas (per-browser) ================= */
+  const LS_NOTES = 'ppp_piutang_notes';
+  const LS_TASKS = 'ppp_piutang_tasks';
+
+  function lsGet(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); }
+    catch(e) { return []; }
+  }
+  function lsSet(key, arr) {
+    try { localStorage.setItem(key, JSON.stringify(arr)); return true; }
+    catch(e) { console.error('localStorage penuh/tidak tersedia', e); return false; }
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+  function initLocalFeatures() {
+    wireGeneralTasks();
+  }
+
+  function bindFakturForms() {
+    document.querySelectorAll('form[data-note-form]').forEach(form => {
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        const fslug = form.dataset.noteForm;
+        const meta = detailMeta[fslug];
+        const ta = form.querySelector('textarea');
+        const text = ta.value.trim();
+        if (!text) return;
+        const notes = lsGet(LS_NOTES);
+        notes.push({ id: uid(), faktur: fslug, debtorName: meta.name, cabang: meta.cabangLabel, text, createdAt: new Date().toISOString() });
+        lsSet(LS_NOTES, notes);
+        ta.value = '';
+        renderAllNotes();
+      });
+    });
+
+    document.querySelectorAll('form[data-task-form]').forEach(form => {
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        const fslug = form.dataset.taskForm;
+        const meta = detailMeta[fslug];
+        const title = form.querySelector('.ttitle').value.trim();
+        const assignee = form.querySelector('.tassignee').value.trim();
+        if (!title) return;
+        const tasks = lsGet(LS_TASKS);
+        tasks.unshift({ id: uid(), title, assignee: assignee || null, faktur: fslug, debtorName: meta.name, cabang: meta.cabangLabel, status: 'todo', createdAt: new Date().toISOString() });
+        lsSet(LS_TASKS, tasks);
+        form.querySelector('.ttitle').value = '';
+        renderAllFakturTasks();
+        renderGeneralTasks();
+      });
+    });
+  }
+
+  let prioBodyChangeWired = false;
+  function wirePrioBodyDelegation() {
+    if (prioBodyChangeWired) return;
+    prioBodyChangeWired = true;
+    prioBody.addEventListener('change', e => {
+      if (e.target.matches('input[type=checkbox][data-task-id]')) {
+        const id = e.target.dataset.taskId;
+        const checked = e.target.checked;
+        const tasks = lsGet(LS_TASKS);
+        const t = tasks.find(x => x.id === id);
+        if (t) { t.status = checked ? 'done' : 'todo'; lsSet(LS_TASKS, tasks); }
+        renderAllFakturTasks();
+        renderGeneralTasks();
+      }
+    });
+  }
+  wirePrioBodyDelegation();
+
+  function renderAllNotes() {
+    const notes = lsGet(LS_NOTES);
+    const byFaktur = {};
+    notes.forEach(n => { (byFaktur[n.faktur] ||= []).push(n); });
+    Object.keys(detailMeta).forEach(fslug => {
+      const el = document.querySelector(`.note-list[data-notes="${fslug}"]`);
+      if (!el) return;
+      const list = (byFaktur[fslug] || []).sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+      el.innerHTML = list.length ? list.map(n => `
+        <div class="note-item">
+          <div class="meta">${fmtTime(n.createdAt)}</div>
+          ${esc(n.text)}
+        </div>`).join('') : '<div class="note-empty">Belum ada catatan.</div>';
+    });
+  }
+
+  function renderAllFakturTasks() {
+    const tasks = lsGet(LS_TASKS);
+    const byFaktur = {};
+    tasks.forEach(t => { if (t.faktur) (byFaktur[t.faktur] ||= []).push(t); });
+    Object.keys(detailMeta).forEach(fslug => {
+      const el = document.querySelector(`.task-list[data-tasks="${fslug}"]`);
+      if (!el) return;
+      const list = (byFaktur[fslug] || []).sort((a,b) => (a.status==='done') - (b.status==='done'));
+      el.innerHTML = list.length ? list.map(t => taskItemHtml(t)).join('') : '<div class="task-empty">Belum ada tugas.</div>';
+    });
+  }
+
+  function taskItemHtml(t) {
+    const done = t.status === 'done';
+    return `<div class="task-item ${done?'done':''}">
+      <input type="checkbox" data-task-id="${t.id}" ${done?'checked':''}>
+      <div class="txt"><div class="title">${esc(t.title)}</div>
+        <div class="sub">${t.assignee ? 'PIC: ' + esc(t.assignee) : 'Tanpa PIC'}</div>
+      </div>
+    </div>`;
+  }
+
+  /* ---------------- general (unlinked) tasks ---------------- */
+  let currentFilter = 'all';
+
+  function wireGeneralTasks() {
+    const form = document.getElementById('gtaskForm');
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const title = form.querySelector('.gtitle').value.trim();
+      const assignee = form.querySelector('.gassignee').value.trim();
+      if (!title) return;
+      const tasks = lsGet(LS_TASKS);
+      tasks.unshift({ id: uid(), title, assignee: assignee || null, faktur: null, status: 'todo', createdAt: new Date().toISOString() });
+      lsSet(LS_TASKS, tasks);
+      form.querySelector('.gtitle').value = '';
+      form.querySelector('.gassignee').value = '';
+      renderGeneralTasks();
+    });
+
+    document.getElementById('tpFilters').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-f]');
+      if (!btn) return;
+      currentFilter = btn.dataset.f;
+      document.querySelectorAll('#tpFilters button').forEach(b => b.classList.toggle('active', b === btn));
+      renderGeneralTasks();
+    });
+
+    document.getElementById('gtaskList').addEventListener('change', e => {
+      if (e.target.matches('input[type=checkbox][data-gtask-id]')) {
+        const id = e.target.dataset.gtaskId;
+        const checked = e.target.checked;
+        const tasks = lsGet(LS_TASKS);
+        const t = tasks.find(x => x.id === id);
+        if (t) { t.status = checked ? 'done' : 'todo'; lsSet(LS_TASKS, tasks); }
+        renderGeneralTasks();
+      }
+    });
+    document.getElementById('gtaskList').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-del]');
+      if (!btn) return;
+      const tasks = lsGet(LS_TASKS).filter(t => t.id !== btn.dataset.del);
+      lsSet(LS_TASKS, tasks);
+      renderGeneralTasks();
+    });
+
+    renderGeneralTasks();
+  }
+
+  function renderGeneralTasks() {
+    const all = lsGet(LS_TASKS).filter(t => !t.faktur);
+    const el = document.getElementById('gtaskList');
+    let filtered = all;
+    if (currentFilter === 'todo') filtered = all.filter(t => t.status !== 'done');
+    if (currentFilter === 'done') filtered = all.filter(t => t.status === 'done');
+    if (!filtered.length) { el.innerHTML = '<div class="task-empty">Tidak ada tugas di kategori ini.</div>'; return; }
+    el.innerHTML = filtered.map(t => {
+      const done = t.status === 'done';
+      return `<div class="gtask-item ${done?'done':''}">
+        <input type="checkbox" data-gtask-id="${t.id}" ${done?'checked':''}>
+        <div><div class="title">${esc(t.title)}</div>
+          <div class="sub">${t.assignee ? 'PIC: '+esc(t.assignee) : 'Tanpa PIC'}</div>
+        </div>
+        <button class="del" data-del="${t.id}" title="Hapus">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  function fmtTime(iso) {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short' }) + ' ' + d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    } catch(e) { return ''; }
+  }
+
+  /* ---------------- apply fresh aggregates to DOM ---------------- */
+  function applyAggregates(agg) {
+    document.getElementById('heroTotal').textContent = fmtRp(agg.totalAll);
+    document.getElementById('heroSub').innerHTML = `dari <b>${agg.count}</b> faktur / unit &nbsp;·&nbsp; rata-rata <b>${fmtRp(agg.count ? agg.totalAll/agg.count : 0)}</b> per unit`;
+    document.getElementById('faktCountLabel').textContent = agg.count;
+
+    const bucketsEl = document.getElementById('heroBuckets');
+    bucketsEl.innerHTML = agg.overallBuckets.map((bk, i) => `
+      <div class="bchip ${i===3?'crit':''}">
+        <span class="name"><span class="dot" style="background:${bk.color || 'var(--b'+(i+1)+')'}"></span>${bk.label}</span>
+        <div class="amt">${fmtShortRp(bk.sum)}</div>
+        <div class="cnt">${bk.count} faktur${i===3?' · prioritas tagih':''}</div>
+      </div>`).join('');
+
+    renderBranchCards(agg.branches);
+    renderPriorityTable(agg.priority);
+
+    const prioCount = agg.priority.length;
+    document.getElementById('prioHeadCount').textContent = prioCount
+      ? `${prioCount} faktur butuh tindak lanjut segera`
+      : 'Tidak ada faktur > 26 hari saat ini';
+    const prioTotal = agg.priority.reduce((s,r) => s + r.jumlah, 0);
+    const distinctDebtors = new Set(agg.priority.map(r => r.id)).size;
+    document.getElementById('prioHeadSum').innerHTML = prioCount
+      ? `total tertunggak <b>${fmtRp(prioTotal)}</b> &nbsp;·&nbsp; ${distinctDebtors} debitur`
+      : 'semua faktur berumur ≤ 26 hari';
+  }
+
+  /* ---------------- CSV parsing (RFC4180-ish: handles quoted fields & embedded commas) ---------------- */
+  function parseCSVFull(text) {
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i+1] === '"') { field += '"'; i++; }
+          else { inQuotes = false; }
+        } else field += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+        else if (c === '\r') { /* skip */ }
+        else field += c;
+      }
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  function cleanNumber(s) {
+    if (s == null) return 0;
+    const n = Number(String(s).replace(/[^0-9-]/g, ''));
+    return isNaN(n) ? 0 : n;
+  }
+
+  function parseAgingCSV(text) {
+    const rows = parseCSVFull(text);
+    let headerIdx = -1;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row && String(row[0] || '').trim() === 'No' && String(row[1] || '').trim() === 'No.Cust') { headerIdx = i; break; }
+    }
+    if (headerIdx === -1) { const e = new Error('Header tidak ditemukan'); e.code = 'HEADER_NOT_FOUND'; throw e; }
+    const out = [];
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row) continue;
+      const nama = row[2];
+      const jumlahRaw = row[6];
+      if (!nama || !jumlahRaw) continue;
+      const jumlah = cleanNumber(jumlahRaw);
+      if (!jumlah) continue;
+      const hariRaw = row[17];
+      out.push({
+        noCust: String(row[1] || '').trim(),
+        nama: String(nama).trim(),
+        faktur: String(row[3] || '').trim(),
+        divisi: String(row[9] || '').trim(),
+        cara: String(row[10] || '').trim(),
+        leasing: String(row[11] || '').trim(),
+        jumlah,
+        tglJtoDisplay: String(row[5] || '').trim(),
+        hari: cleanNumber(hariRaw),
+        salesman: String(row[12] || '').trim(),
+        followup: (row[16] && String(row[16]).trim() !== '#N/A') ? String(row[16]).trim() : '',
+      });
+    }
+    if (!out.length) { const e = new Error('Tidak ada baris data'); e.code = 'NO_ROWS'; throw e; }
+    return out;
+  }
+
+  /* ---------------- refresh from Google Sheets (public CSV export, no login needed) ---------------- */
+  const SHEET_ID = '1ul2WqwEb4X66Q6CYdycNvtyaLu08axFkZL75FI-qdmM';
+  const SHEET_TAB = 'Sheet1';
+  const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_TAB)}`;
+
+  const refreshBtn = document.getElementById('refreshBtn');
+  const refreshIcon = document.getElementById('refreshIcon');
+  const syncStatusEl = document.getElementById('syncStatus');
+  const syncMessageEl = document.getElementById('syncMessage');
+
+  function showSyncMessage(kind, text) {
+    syncMessageEl.style.display = 'block';
+    syncMessageEl.textContent = text;
+    syncMessageEl.style.background = kind === 'error' ? 'var(--b4-bg)' : (kind === 'success' ? '#4ADE8022' : 'var(--panel-3)');
+    syncMessageEl.style.color = kind === 'error' ? 'var(--b4)' : (kind === 'success' ? 'var(--b1)' : 'var(--ink-dim)');
+    if (kind === 'success') setTimeout(() => { syncMessageEl.style.display = 'none'; }, 4000);
+  }
+
+  function setRefreshLoading(loading) {
+    refreshBtn.disabled = loading;
+    refreshIcon.style.animation = loading ? 'spin 0.9s linear infinite' : 'none';
+    refreshBtn.style.opacity = loading ? '.6' : '1';
+  }
+
+  async function refreshFromSheet() {
+    setRefreshLoading(true);
+    syncMessageEl.style.display = 'none';
+    try {
+      const res = await fetch(GVIZ_URL, { cache: 'no-store' });
+      if (!res.ok) { const e = new Error('HTTP ' + res.status); e.code = 'HTTP_' + res.status; throw e; }
+      const text = await res.text();
+      const rows = parseAgingCSV(text);
+      const agg = computeAggregates(rows);
+      applyAggregates(agg);
+      const now = new Date();
+      syncStatusEl.innerHTML = `Disinkron manual <b>${fmtTimeShort(now)}</b>`;
+      showSyncMessage('success', `✓ Berhasil disinkron dari spreadsheet — ${agg.count} faktur, pukul ${fmtTimeShort(now)}`);
+    } catch (err) {
+      handleRefreshError(err);
+    } finally {
+      setRefreshLoading(false);
+    }
+  }
+
+  function handleRefreshError(err) {
+    const code = err && err.code;
+    let msg = `Gagal menyinkronkan data (${code || 'kesalahan tidak dikenal'}). Coba lagi.`;
+    if (code === 'HEADER_NOT_FOUND') msg = 'Format header sheet tidak dikenali — mungkin struktur laporan berubah.';
+    else if (code === 'NO_ROWS') msg = 'Tidak ada baris data piutang yang terbaca dari sheet.';
+    else if (code === 'TypeError' || /fetch/i.test(String(err && err.message))) msg = 'Gagal mengambil data — periksa koneksi internet, atau sheet mungkin tidak lagi bisa diakses publik.';
+    else if (String(code).startsWith('HTTP_')) msg = `Google Sheets menolak permintaan (${code}). Pastikan sheet masih dibagikan sebagai "Anyone with link".`;
+    showSyncMessage('error', msg);
+    console.error('refresh error', err);
+  }
+
+  refreshBtn.addEventListener('click', refreshFromSheet);
+
+  /* ---------------- boot ---------------- */
+  renderBranchCards(branches);
+  renderPriorityTable(priority);
+  initLocalFeatures();
+})();
+</script>
+</body>
+</html>
