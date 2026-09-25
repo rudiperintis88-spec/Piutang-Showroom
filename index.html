@@ -301,7 +301,7 @@
     </div>
     <div class="meta">
       <div id="refreshRow" style="display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-bottom:6px;">
-        <span id="syncStatus" style="font-size:12px; color:var(--ink-faint);">Data per <b style="color:var(--ink)">25 September 2026</b></span>
+        <span id="syncStatus" style="font-size:12px; color:var(--ink-faint);">🔄 Memuat data live…</span>
         <button id="refreshBtn" title="Tarik data terbaru dari Google Sheets — update semua tab (Piutang, Ringkasan, Leasing, Penjualan)" style="background:var(--panel-3); border:1px solid var(--line); color:var(--ink); border-radius:7px; padding:5px 11px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap;">
           <span id="refreshIcon">🔄</span> Refresh
         </button>
@@ -367,7 +367,7 @@
   <div class="tabpane hidden" id="tab-penjualan">
     <div class="penjualanwrap">
       <div class="penjualan-note" id="penjualanNote">Kumulatif sejak transaksi pertama tercatat</div>
-      <div class="penjualan-sync" id="penjualanSync">Menampilkan snapshot terakhir — klik Refresh di atas untuk data terbaru</div>
+      <div class="penjualan-sync" id="penjualanSync">🔄 Memuat data live…</div>
       <div class="penjualan-grid" id="penjualanGrid"></div>
 
       <div class="pj-subtitle">Penjualan per Bulan <span>2026 · per cabang · jumlah unit</span></div>
@@ -737,21 +737,30 @@
   /* ---------------- live fetch: sheet "Data" (unit sold log) published CSV ---------------- */
   const SALES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=0&single=true&output=csv';
 
-  function parseFlexibleDate(s) {
+  // Detect whether this sheet's date strings are DAY/MONTH/YEAR or MONTH/DAY/YEAR by
+  // scanning for unambiguous evidence in the data itself (a value > 12 can only be a
+  // day, never a month) — far more reliable than assuming a fixed locale convention,
+  // since guessing wrong silently shuffles records into the wrong months.
+  function detectDateFormat(rawStrings) {
+    for (const s of rawStrings) {
+      const m = String(s || '').match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.]\d{2,4}(?!\d)/);
+      if (!m) continue;
+      const a = +m[1], b = +m[2];
+      if (a > 12) return 'DMY';
+      if (b > 12) return 'MDY';
+    }
+    return 'DMY'; // fully ambiguous sample: default to Indonesian convention
+  }
+
+  function parseDateWithFormat(s, format) {
     s = String(s == null ? '' : s).trim();
     if (!s) return null;
-    // Numeric slash/dash dates: parse explicitly as DD/MM/YYYY (Indonesian convention).
-    // IMPORTANT: do NOT try native Date(string) first for this pattern — browsers
-    // parse "10/9/2026"-style strings as MONTH/DAY/YEAR (US convention) whenever that
-    // reading is valid (which it usually is, since day<=12 also looks like a valid
-    // month), silently swapping day and month for most dates and shifting real
-    // September/October records into fake future months.
     const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?!\d)/);
     if (m) {
       let [, a, b, y] = m;
       y = y.length === 2 ? '20' + y : y;
-      let day = +a, month = +b;
-      if (month > 12 && day <= 12) { [day, month] = [month, day]; } // only swap when unambiguous
+      const day = format === 'MDY' ? +b : +a;
+      const month = format === 'MDY' ? +a : +b;
       const d = new Date(+y, month - 1, day);
       if (!isNaN(d.getTime())) return d;
     }
@@ -769,12 +778,12 @@
       if (row && String(row[0]).trim() === 'No' && String(row[1]).trim() === 'Tanggal') { headerIdx = i; break; }
     }
     if (headerIdx === -1) { const e = new Error('Header sheet Data tidak ditemukan'); e.code = 'HEADER_NOT_FOUND'; throw e; }
+    const dataRows = rows.slice(headerIdx + 1).filter(r => r && r[9]);
+    const dateFormat = detectDateFormat(dataRows.map(r => r[1]));
     const out = [];
-    for (let i = headerIdx + 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (!row) continue;
+    for (const row of dataRows) {
       const divisi = row[9];
-      const tgl = parseFlexibleDate(row[1]);
+      const tgl = parseDateWithFormat(row[1], dateFormat);
       if (!divisi || !tgl) continue;
       out.push({ tanggal: tgl, cara: String(row[7] || '').trim(), divisi: String(divisi).trim(), statusFnc: String(row[10] || '').trim() });
     }
@@ -849,7 +858,7 @@
       PENJUALAN_ASOF = agg.asOf;
       renderPenjualanPerDivisi();
       const now = new Date();
-      setSalesSyncStatus('', `✓ Tersinkron ${fmtTimeShort(now)}`);
+      setSalesSyncStatus('', `🔄 Live · tersinkron ${fmtTimeShort(now)}`);
     } catch (err) {
       console.error('sales sync error', err);
       setSalesSyncStatus('error', `⚠ Gagal sinkron data penjualan (${err.code || 'error'}) — menampilkan data terakhir yang berhasil dimuat.`);
@@ -1250,7 +1259,7 @@
       const agg = computeAggregates(rows);
       applyAggregates(agg);
       const now = new Date();
-      syncStatusEl.innerHTML = `Disinkron manual <b>${fmtTglLong(now)}, ${fmtTimeShort(now)}</b>`;
+      syncStatusEl.innerHTML = `🔄 Live · tersinkron <b>${fmtTimeShort(now)}</b> · otomatis tiap 2 menit`;
       if (!isAuto) showSyncMessage('success', `✓ Semua data diperbarui — piutang ${agg.count} faktur, ${fmtTglLong(now)} pukul ${fmtTimeShort(now)}`);
     } catch (err) {
       handleRefreshError(err, isAuto);
@@ -1271,10 +1280,18 @@
     console.error('refresh error', err);
   }
 
-  refreshBtn.addEventListener('click', () => {
-    refreshFromSheet(false);
-    fetchSalesData(false);
-  });
+  function refreshAllData(isAuto) {
+    refreshFromSheet(isAuto);
+    fetchSalesData(isAuto);
+  }
+
+  refreshBtn.addEventListener('click', () => refreshAllData(false));
+
+  const AUTO_REFRESH_MS = 120000; // minimal 2 menit
+  function startAutoRefresh() {
+    refreshAllData(false);
+    setInterval(() => refreshAllData(true), AUTO_REFRESH_MS);
+  }
 
   /* ---------------- boot ---------------- */
   renderBranchCards(branches);
@@ -1284,6 +1301,7 @@
   renderPriorityTable(priority);
   initLocalFeatures();
   wireMainTabs();
+  startAutoRefresh();
 })();
 </script>
 </body>
