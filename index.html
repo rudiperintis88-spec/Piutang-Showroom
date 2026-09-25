@@ -272,7 +272,7 @@
   </div>
 
   <footer>
-    <span>Dibuat dari "PP Laporan Piutang Per Nama 2026.xlsx" (Google Sheets) — tombol Refresh menarik data langsung dari sheet publik (view-only); catatan &amp; tugas tersimpan di browser perangkat ini saja (tidak sinkron antar-perangkat/tim).</span>
+    <span>Dibuat dari "PP Laporan Piutang Per Nama 2026.xlsx" (Google Sheets) — tombol Refresh menarik data dari tab Sheet1 yang di-publish ke web; catatan &amp; tugas tersimpan di browser perangkat ini saja (tidak sinkron antar-perangkat/tim).</span>
     <span>Gatsu · Flamboyan · Gagak Hitam</span>
   </footer>
 </div>
@@ -719,10 +719,8 @@
     return out;
   }
 
-  /* ---------------- refresh from Google Sheets (public CSV export, no login needed) ---------------- */
-  const SHEET_ID = '1ul2WqwEb4X66Q6CYdycNvtyaLu08axFkZL75FI-qdmM';
-  const SHEET_TAB = 'Sheet1';
-  const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_TAB)}`;
+  /* ---------------- refresh from Google Sheets (Published to Web CSV, no login needed) ---------------- */
+  const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=860325626&single=true&output=csv';
 
   const refreshBtn = document.getElementById('refreshBtn');
   const refreshIcon = document.getElementById('refreshIcon');
@@ -747,7 +745,7 @@
     setRefreshLoading(true);
     syncMessageEl.style.display = 'none';
     try {
-      const res = await fetch(GVIZ_URL, { cache: 'no-store' });
+      const res = await fetch(PUBLISHED_CSV_URL, { cache: 'no-store' });
       if (!res.ok) { const e = new Error('HTTP ' + res.status); e.code = 'HTTP_' + res.status; throw e; }
       const text = await res.text();
       const rows = parseAgingCSV(text);
