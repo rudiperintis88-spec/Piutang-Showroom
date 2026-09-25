@@ -153,6 +153,51 @@
   table.division-table tr.dtotal-row td { font-weight: 700; border-top: 1px solid var(--line); background: var(--panel-2); }
   table.division-table td.dnum { text-align: right; font-family: var(--mono); }
   table.division-table td.zero { color: var(--ink-faint); }
+
+  /* penjualan per divisi */
+  .penjualan-note { font-size: 12px; color: var(--ink-faint); margin-bottom: 14px; }
+  .penjualan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .penjualan-grid { grid-template-columns: 1fr; } }
+  .pj-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; border-top: 3px solid var(--accent); text-align: center; }
+  .pj-card .pj-name { font-family: var(--serif); font-size: 17px; font-weight: 500; margin-bottom: 10px; }
+  .pj-card .pj-unit { font-family: var(--mono); font-weight: 700; font-size: 32px; color: var(--ink); }
+  .pj-card .pj-label { font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
+  .pj-card .pj-bar { height: 8px; border-radius: 4px; background: var(--line-soft); overflow: hidden; margin: 14px 0 8px; }
+  .pj-card .pj-bar div { height: 100%; background: var(--accent); border-radius: 4px; }
+  .pj-card .pj-pct { font-size: 12.5px; color: var(--ink-dim); font-weight: 600; }
+  .pj-total-row { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 22px; margin-top: 4px; }
+  .pj-total-row .lbl { font-size: 13px; color: var(--ink-dim); }
+  .pj-total-row .val { font-family: var(--mono); font-size: 20px; font-weight: 700; }
+
+  .pj-subtitle { font-family: var(--serif); font-size: 16px; font-weight: 500; margin: 30px 0 14px; display: flex; align-items: baseline; gap: 10px; }
+  .pj-subtitle span { font-family: var(--sans); font-size: 11.5px; color: var(--ink-faint); font-weight: 400; }
+
+  .month-chart-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 16px 12px; overflow-x: auto; }
+  .month-chart { display: flex; align-items: flex-end; gap: 4px; height: 190px; min-width: 720px; }
+  .month-bar { flex: 1; min-width: 16px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; cursor: default; }
+  .month-bar .bar { width: 100%; max-width: 20px; background: var(--accent2); border-radius: 3px 3px 0 0; transition: opacity .1s; }
+  .month-bar:hover .bar { opacity: .75; }
+  .month-bar .mlabel { font-size: 9px; color: var(--ink-faint); margin-top: 6px; white-space: nowrap; transform: rotate(-45deg); transform-origin: top right; }
+  .month-bar .mval { font-size: 9.5px; font-family: var(--mono); color: var(--ink-dim); margin-bottom: 4px; white-space: nowrap; }
+  .month-bar.yearstart .bar { background: var(--gatsu); }
+
+  .month-chart-stack { display: flex; flex-direction: column; gap: 14px; }
+  .mc-block { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 16px 10px; border-left: 3px solid var(--accent); overflow-x: auto; }
+  .mc-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .mc-head .mc-name { font-family: var(--serif); font-size: 14.5px; font-weight: 500; }
+  .mc-head .mc-total { font-family: var(--mono); font-size: 12.5px; color: var(--ink-dim); }
+
+  .sales-leasing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .sales-leasing-grid { grid-template-columns: 1fr; } }
+  .sl-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; border-top: 3px solid var(--accent); }
+  .sl-card .slhead { padding: 14px 16px 10px; }
+  .sl-card .slname { font-family: var(--serif); font-size: 15px; font-weight: 500; }
+  .sl-card .sltotal { font-family: var(--mono); font-size: 13px; color: var(--ink-dim); margin-top: 2px; }
+  table.sl-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.sl-table th { text-align: left; font-weight: 500; color: var(--ink-faint); padding: 7px 14px; font-size: 10px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  table.sl-table td { padding: 7px 14px; border-bottom: 1px solid var(--line-soft); }
+  table.sl-table tr:last-child td { border-bottom: none; }
+  table.sl-table td.slnum { text-align: right; font-family: var(--mono); }
   .prio-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 18px 20px; background: var(--b4-bg); border-bottom: 1px solid #F0555A3D; }
   .prio-head .t { display: flex; align-items: center; gap: 10px; }
   .prio-head .t .flag { width: 9px; height: 9px; border-radius: 50%; background: var(--b4); box-shadow: 0 0 0 4px #F0555A22; }
@@ -282,6 +327,7 @@
     <button class="tabbtn active" data-tab="cabang">Piutang per Cabang</button>
     <button class="tabbtn" data-tab="ringkasan">Ringkasan Gabungan</button>
     <button class="tabbtn" data-tab="perdivisi">Leasing per Divisi</button>
+    <button class="tabbtn" data-tab="penjualan">Penjualan per Divisi</button>
   </div>
 
   <div class="tabpane" id="tab-cabang">
@@ -310,6 +356,19 @@
 
   <div class="tabpane hidden" id="tab-perdivisi">
     <div class="division-grid" id="divisionGrid"></div>
+  </div>
+
+  <div class="tabpane hidden" id="tab-penjualan">
+    <div class="penjualanwrap">
+      <div class="penjualan-note" id="penjualanNote">Kumulatif sejak transaksi pertama tercatat</div>
+      <div class="penjualan-grid" id="penjualanGrid"></div>
+
+      <div class="pj-subtitle">Penjualan per Bulan <span>2026 · per cabang · jumlah unit</span></div>
+      <div class="month-chart-stack" id="monthChartStack"></div>
+
+      <div class="pj-subtitle">Penjualan per Leasing <span id="leasingMonthLabel">bulan berjalan</span> · per cabang</div>
+      <div class="sales-leasing-grid" id="salesLeasingGrid"></div>
+    </div>
   </div>
 
   <!-- PRIORITY -->
@@ -581,9 +640,96 @@
     return totals;
   }
 
+  /* ---------------- render "Penjualan per Divisi" tab (tahun berjalan: 2026 YTD) ---------------- */
+  const penjualanData = [
+    { key:'gatsu', name:'Gatsu', color:'var(--gatsu)', unit:1020 },
+    { key:'flamboyan', name:'Flamboyan', color:'var(--flamboyan)', unit:503 },
+    { key:'gagak', name:'Gagak Hitam', color:'var(--gagak)', unit:535 },
+  ];
+  const PENJUALAN_ASOF = 'Jan – Sep 2026 (tahun berjalan)';
+
+  const MONTH_LABELS = ['Jan 26','Feb 26','Mar 26','Apr 26','Mei 26','Jun 26','Jul 26','Agu 26','Sep 26'];
+
+  const monthlyByDivision = {
+    gatsu: [111,124,126,142,106,111,113,110,77],
+    flamboyan: [46,57,63,79,55,58,53,47,45],
+    gagak: [47,53,50,68,36,47,50,97,87],
+  };
+
+  const salesLeasingCurrentMonth = {
+    gatsu: [ {name:'TAF',unit:22},{name:'Cash (Tunai)',unit:17},{name:'ACC',unit:17},{name:'KKB',unit:10},{name:'BRIM',unit:4},{name:'BUANA',unit:4},{name:'MYIF',unit:2},{name:'MTF',unit:1} ],
+    flamboyan: [ {name:'Cash (Tunai)',unit:13},{name:'TAF',unit:13},{name:'ACC',unit:13},{name:'BRIM',unit:2},{name:'IMFS',unit:1},{name:'BSI',unit:1},{name:'BUANA',unit:1},{name:'ADM',unit:1} ],
+    gagak: [ {name:'TAF',unit:35},{name:'ACC',unit:26},{name:'Cash (Tunai)',unit:12},{name:'MTF',unit:5},{name:'MUF',unit:4},{name:'BUANA',unit:2},{name:'MYIF',unit:1},{name:'BCAF',unit:1},{name:'KKB',unit:1} ],
+  };
+  const LEASING_MONTH_LABEL = 'September 2026';
+
+  function renderPenjualanPerDivisi() {
+    const grid = document.getElementById('penjualanGrid');
+    const totalUnit = penjualanData.reduce((s,d) => s + d.unit, 0);
+    const maxUnit = Math.max(...penjualanData.map(d => d.unit), 1);
+    grid.innerHTML = penjualanData.map(d => {
+      const pct = totalUnit ? (d.unit / totalUnit * 100) : 0;
+      return `<div class="pj-card" style="--accent:${d.color}">
+        <div class="pj-name">${esc(d.name)}</div>
+        <div class="pj-unit">${d.unit.toLocaleString('id-ID')}</div>
+        <div class="pj-label">unit terjual</div>
+        <div class="pj-bar"><div style="width:${(d.unit/maxUnit*100)}%"></div></div>
+        <div class="pj-pct">${pct.toFixed(1)}% dari total</div>
+      </div>`;
+    }).join('') + `<div class="pj-total-row"><span class="lbl">Total unit terjual (3 cabang)</span><span class="val">${totalUnit.toLocaleString('id-ID')} unit</span></div>`;
+    document.getElementById('penjualanNote').textContent = `Tahun berjalan · ${PENJUALAN_ASOF} · data historis, tidak terkait piutang berjalan`;
+    document.getElementById('leasingMonthLabel').textContent = LEASING_MONTH_LABEL;
+
+    renderMonthChartStack();
+    renderSalesLeasingGrid();
+  }
+
+  function renderMonthChartStack() {
+    const stack = document.getElementById('monthChartStack');
+    stack.innerHTML = penjualanData.map(d => {
+      const series = monthlyByDivision[d.key];
+      const maxUnit = Math.max(...series, 1);
+      const bars = series.map((u, i) => {
+        const isYearStart = MONTH_LABELS[i].startsWith('Jan');
+        const h = (u / maxUnit * 100);
+        return `<div class="month-bar ${isYearStart?'yearstart':''}" title="${esc(MONTH_LABELS[i])}: ${u} unit" style="--accent:${d.color}">
+          <div class="mval">${u}</div>
+          <div class="bar" style="height:${h}%; background:${d.color}"></div>
+          <div class="mlabel">${esc(MONTH_LABELS[i])}</div>
+        </div>`;
+      }).join('');
+      return `<div class="mc-block" style="--accent:${d.color}">
+        <div class="mc-head"><span class="mc-name">${esc(d.name)}</span><span class="mc-total">total ${d.unit.toLocaleString('id-ID')} unit</span></div>
+        <div class="month-chart">${bars}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderSalesLeasingGrid() {
+    const grid = document.getElementById('salesLeasingGrid');
+    grid.innerHTML = penjualanData.map(d => {
+      const list = salesLeasingCurrentMonth[d.key];
+      const total = list.reduce((s,l) => s + l.unit, 0);
+      const rows = list.map(l => `<tr><td>${esc(l.name)}</td><td class="slnum">${l.unit}</td></tr>`).join('');
+      return `<div class="sl-card" style="--accent:${d.color}">
+        <div class="slhead">
+          <div class="slname">${esc(d.name)}</div>
+          <div class="sltotal">${total} unit · ${LEASING_MONTH_LABEL}</div>
+        </div>
+        <table class="sl-table">
+          <thead><tr><th>Leasing / Metode</th><th style="text-align:right">Unit</th></tr></thead>
+          <tbody>${rows}
+            <tr><td style="font-weight:700">Total</td><td class="slnum" style="font-weight:700">${total}</td></tr>
+          </tbody>
+        </table>
+      </div>`;
+    }).join('');
+  }
+
+
   function wireMainTabs() {
     const tabs = document.querySelectorAll('#mainTabs .tabbtn');
-    const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi') };
+    const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi'), penjualan: document.getElementById('tab-penjualan') };
     tabs.forEach(btn => {
       btn.addEventListener('click', () => {
         tabs.forEach(b => b.classList.toggle('active', b === btn));
@@ -1000,6 +1146,7 @@
   renderBranchCards(branches);
   renderLeasingTable(leasingBreakdown);
   renderDivisionCards(leasingBreakdown, computeBranchTotalsFromLeasing(leasingBreakdown));
+  renderPenjualanPerDivisi();
   wireMainTabs();
   renderPriorityTable(priority);
   initLocalFeatures();
