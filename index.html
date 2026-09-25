@@ -739,7 +739,19 @@
   const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=860325626&single=true&output=csv';
   const SALES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=0&single=true&output=csv';
 
+  function detectDelimiter(text) {
+    const firstLine = (text.split(/\r?\n/).find(l => l.trim().length > 0)) || '';
+    const candidates = ['\t', ',', ';'];
+    let best = ',', bestCount = 1;
+    for (const d of candidates) {
+      const count = firstLine.split(d).length;
+      if (count > bestCount) { bestCount = count; best = d; }
+    }
+    return best;
+  }
+
   function parseCSVFull(text) {
+    const delim = detectDelimiter(text);
     const rows = [];
     let row = [], field = '', inQuotes = false;
     for (let i = 0; i < text.length; i++) {
@@ -751,7 +763,7 @@
         } else field += c;
       } else {
         if (c === '"') inQuotes = true;
-        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === delim) { row.push(field); field = ''; }
         else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
         else if (c === '\r') { /* skip */ }
         else field += c;
@@ -765,7 +777,10 @@
   function cellNum(v) {
     if (v == null) return 0;
     if (typeof v === 'number') return v;
-    const n = Number(String(v).replace(/[^0-9.-]/g, ''));
+    // Indonesian number format uses "." as a thousands separator (e.g. "243.200.000"),
+    // never as a decimal point for these whole-Rupiah fields — strip it along with any
+    // other non-digit characters so it doesn't get misread as a decimal point.
+    const n = Number(String(v).replace(/[^0-9-]/g, ''));
     return isNaN(n) ? 0 : n;
   }
 
