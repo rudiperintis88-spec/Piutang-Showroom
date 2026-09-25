@@ -740,17 +740,24 @@
   function parseFlexibleDate(s) {
     s = String(s == null ? '' : s).trim();
     if (!s) return null;
-    let d = new Date(s);
-    if (!isNaN(d.getTime())) return d;
-    const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    // Numeric slash/dash dates: parse explicitly as DD/MM/YYYY (Indonesian convention).
+    // IMPORTANT: do NOT try native Date(string) first for this pattern — browsers
+    // parse "10/9/2026"-style strings as MONTH/DAY/YEAR (US convention) whenever that
+    // reading is valid (which it usually is, since day<=12 also looks like a valid
+    // month), silently swapping day and month for most dates and shifting real
+    // September/October records into fake future months.
+    const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?!\d)/);
     if (m) {
       let [, a, b, y] = m;
       y = y.length === 2 ? '20' + y : y;
       let day = +a, month = +b;
-      if (day <= 12 && month > 12) { [day, month] = [month, day]; }
-      d = new Date(+y, month - 1, day);
+      if (month > 12 && day <= 12) { [day, month] = [month, day]; } // only swap when unambiguous
+      const d = new Date(+y, month - 1, day);
       if (!isNaN(d.getTime())) return d;
     }
+    // Fallback: ISO ("2026-09-25") or other formats the regex above didn't match.
+    const d2 = new Date(s);
+    if (!isNaN(d2.getTime())) return d2;
     return null;
   }
 
