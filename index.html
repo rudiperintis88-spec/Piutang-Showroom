@@ -297,7 +297,8 @@
   <div class="masthead">
     <div>
       <div class="co">PT Perintis Perkasa, Medan</div>
-      <h1>Dashboard Piutang per Cabang</h1>
+      <h1>Piutang Per Cabang</h1>
+      <div class="perdate" id="perDateLabel" style="font-size:12.5px; color:var(--ink-faint); margin-top:4px;">Per : 26-Sep-2026</div>
     </div>
     <div class="meta">
       <div id="refreshRow" style="display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-bottom:6px;">
@@ -740,12 +741,12 @@
   const SALES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=0&single=true&output=csv';
 
   function detectDelimiter(text) {
-    const firstLine = (text.split(/\r?\n/).find(l => l.trim().length > 0)) || '';
+    const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0).slice(0, 15);
     const candidates = ['\t', ',', ';'];
-    let best = ',', bestCount = 1;
+    let best = ',', bestMax = 1;
     for (const d of candidates) {
-      const count = firstLine.split(d).length;
-      if (count > bestCount) { bestCount = count; best = d; }
+      const maxCount = Math.max(...lines.map(l => l.split(d).length));
+      if (maxCount > bestMax) { bestMax = maxCount; best = d; }
     }
     return best;
   }
@@ -1262,6 +1263,18 @@
     refreshBtn.style.opacity = loading ? '.6' : '1';
   }
 
+  function extractPerDate(rows) {
+    for (const row of rows) {
+      if (!row) continue;
+      for (const cell of row) {
+        const m = String(cell || '').match(/Per\s*:\s*(\d{1,2}-[A-Za-z]+-\d{4})/i);
+        if (m) return m[1];
+      }
+      if (row.some(c => cellStr(c) === 'No') ) break; // stop once we reach the real header row
+    }
+    return null;
+  }
+
   async function refreshFromSheet(isAuto) {
     setRefreshLoading(true);
     if (!isAuto) syncMessageEl.style.display = 'none';
@@ -1270,6 +1283,8 @@
       if (!res.ok) { const e = new Error('HTTP ' + res.status); e.code = 'HTTP_' + res.status; throw e; }
       const text = await res.text();
       const rows = parseCSVFull(text);
+      const perDate = extractPerDate(rows);
+      if (perDate) document.getElementById('perDateLabel').textContent = `Per : ${perDate}`;
       const agingRows = parseAgingRows(rows);
       const agg = computeAggregates(agingRows);
       applyAggregates(agg);
