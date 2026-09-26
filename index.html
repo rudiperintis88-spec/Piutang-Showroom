@@ -387,11 +387,11 @@
 
   <div class="tabbar" id="mainTabs">
     <button class="tabbtn active" data-tab="cabang">Piutang per Cabang</button>
+    <button class="tabbtn" data-tab="followup">Followup Penagihan ke Leasing</button>
+    <button class="tabbtn" data-tab="rincian">Rincian Leasing (Umur Piutang)</button>
     <button class="tabbtn" data-tab="ringkasan">Ringkasan Gabungan</button>
     <button class="tabbtn" data-tab="perdivisi">Leasing per Divisi</button>
     <button class="tabbtn" data-tab="penjualan">Penjualan per Divisi</button>
-    <button class="tabbtn" data-tab="rincian">Rincian Leasing (Umur Piutang)</button>
-    <button class="tabbtn" data-tab="followup">Followup Penagihan ke Leasing</button>
   </div>
 
   <div class="tabpane" id="tab-cabang">
@@ -461,15 +461,15 @@
         <thead>
           <tr>
             <th data-key="nama">Nama Customer</th>
-            <th data-key="faktur">Faktur No.</th>
             <th data-key="tglJto">Tgl JTO</th>
             <th data-key="leasing">Leasing</th>
             <th data-key="divisi">Cabang</th>
             <th data-key="jumlah" style="text-align:right">Jumlah</th>
             <th data-key="tglBuatTagihan">Tgl Buat Tagihan</th>
+            <th data-key="hari" style="text-align:right">Hari</th>
             <th data-key="salesman">Salesman</th>
             <th data-key="supervisor">Supervisor</th>
-            <th data-key="hari" style="text-align:right">Hari</th>
+            <th data-key="faktur">Faktur No.</th>
             <th data-key="tglBarcode">Tgl Barcode</th>
           </tr>
         </thead>
@@ -1496,15 +1496,15 @@
       const belum = isBelumTagih(r);
       return `<tr class="${r.hari > 26 ? 'fu-highlight' : ''}">
         <td>${esc(r.nama)}</td>
-        <td class="jumlah-mono">${esc(r.faktur)}</td>
         <td>${esc(r.tglJtoDisplay)}</td>
         <td>${esc(leasingKey)}</td>
         <td>${esc(r.divisi)}</td>
         <td class="fu-jumlah">${fmtRp(r.jumlah)}</td>
         <td><span class="fu-status-pill ${belum ? 'belum' : 'sudah'}">${belum ? 'Belum' : 'Sudah'}</span>${!belum ? esc(r.tglBuatTagihan) : ''}</td>
+        <td class="fu-hari ${r.hari > 26 ? 'crit' : ''}">${r.hari} hr</td>
         <td>${esc(cleanSalesmanFull(r.salesman))}</td>
         <td>${esc(r.supervisor) || '–'}</td>
-        <td class="fu-hari ${r.hari > 26 ? 'crit' : ''}">${r.hari} hr</td>
+        <td class="jumlah-mono">${esc(r.faktur)}</td>
         <td>${esc(r.tglBarcode) && r.tglBarcode !== '#N/A' ? esc(r.tglBarcode) : '–'}</td>
       </tr>`;
     }).join('');
