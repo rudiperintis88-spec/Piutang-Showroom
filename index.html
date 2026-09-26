@@ -1442,7 +1442,7 @@
 
   /* ---------------- Followup Penagihan ke Leasing: search + filter + sortable table ---------------- */
   let fuAllRows = [];
-  let fuState = { search: '', leasing: '', cabang: '', status: 'all', sortKey: 'hari', sortDir: 'desc' };
+  let fuState = { search: '', leasing: '', cabang: '', status: 'all', sortKey: 'leasing', sortDir: 'asc' };
 
   function isBelumTagih(r) {
     return /belum/i.test(r.tglBuatTagihan || '');
