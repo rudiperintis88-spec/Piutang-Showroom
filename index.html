@@ -467,10 +467,10 @@
             <th data-key="divisi">Cabang</th>
             <th data-key="jumlah" style="text-align:right">Jumlah</th>
             <th data-key="tglBuatTagihan">Tgl Buat Tagihan</th>
-            <th data-key="tglBarcode">Tgl Barcode</th>
             <th data-key="salesman">Salesman</th>
             <th data-key="supervisor">Supervisor</th>
             <th data-key="hari" style="text-align:right">Hari</th>
+            <th data-key="tglBarcode">Tgl Barcode</th>
           </tr>
         </thead>
         <tbody id="fuBody"></tbody>
@@ -1502,10 +1502,10 @@
         <td>${esc(r.divisi)}</td>
         <td class="fu-jumlah">${fmtRp(r.jumlah)}</td>
         <td><span class="fu-status-pill ${belum ? 'belum' : 'sudah'}">${belum ? 'Belum' : 'Sudah'}</span>${!belum ? esc(r.tglBuatTagihan) : ''}</td>
-        <td>${esc(r.tglBarcode) && r.tglBarcode !== '#N/A' ? esc(r.tglBarcode) : '–'}</td>
         <td>${esc(cleanSalesmanFull(r.salesman))}</td>
         <td>${esc(r.supervisor) || '–'}</td>
         <td class="fu-hari ${r.hari > 26 ? 'crit' : ''}">${r.hari} hr</td>
+        <td>${esc(r.tglBarcode) && r.tglBarcode !== '#N/A' ? esc(r.tglBarcode) : '–'}</td>
       </tr>`;
     }).join('');
     document.getElementById('fuCount').textContent = `${list.length} dari ${fuAllRows.length} faktur ditampilkan`;
