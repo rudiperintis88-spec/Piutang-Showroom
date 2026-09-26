@@ -182,6 +182,33 @@
   tr.rgroup-row td { background: var(--panel-2); font-weight: 700; font-size: 11px; color: var(--ink-dim); padding: 7px 14px; border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: .03em; }
   tr.rgroup-row td span { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ink-faint); font-family: var(--mono); font-size: 11px; }
 
+  /* followup penagihan ke leasing */
+  .fu-toolbar-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .fu-toolbar-head h2 { font-family: var(--serif); font-size: 19px; font-weight: 500; margin: 0; }
+  .fu-hint { font-size: 11.5px; color: var(--ink-faint); }
+  .fu-toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .fu-toolbar input[type=text] { flex: 1; min-width: 220px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 13px; font-size: 13px; color: var(--ink); }
+  .fu-toolbar select { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 13px; font-size: 13px; color: var(--ink); }
+  .fu-status-tabs { display: flex; gap: 6px; }
+  .fu-status-tabs button { background: var(--panel); border: 1px solid var(--line); color: var(--ink-dim); border-radius: 8px; padding: 9px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .fu-status-tabs button.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .fu-table-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow-x: auto; box-shadow: 0 1px 3px rgba(16,24,40,.05); }
+  table.fu-table { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
+  table.fu-table th { text-align: left; font-weight: 600; color: var(--ink-dim); padding: 11px 14px; font-size: 11px; background: var(--panel-2); border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; }
+  table.fu-table th:hover { color: var(--ink); background: var(--panel-3); }
+  table.fu-table th .sort-arrow { font-size: 9px; margin-left: 3px; color: var(--accent2); }
+  table.fu-table td { padding: 10px 14px; border-bottom: 1px solid var(--line-soft); color: var(--ink); }
+  table.fu-table tr:last-child td { border-bottom: none; }
+  table.fu-table tr:hover td { background: var(--panel-2); }
+  table.fu-table td.fu-jumlah { text-align: right; font-family: var(--mono); font-weight: 600; }
+  table.fu-table td.fu-hari { text-align: right; font-family: var(--mono); font-weight: 700; }
+  table.fu-table td.fu-hari.crit { color: var(--b4); }
+  .fu-status-pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 10.5px; font-weight: 700; margin-right: 6px; }
+  .fu-status-pill.sudah { background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC; }
+  .fu-status-pill.belum { background: var(--panel-3); color: var(--ink-faint); border: 1px solid var(--line); }
+  .fu-count { font-size: 12px; color: var(--ink-faint); margin-top: 10px; }
+  tr.fu-highlight td { background: #FFF7E6; }
+
   /* penjualan per divisi */
   .penjualan-note { font-size: 12px; color: var(--ink-faint); margin-bottom: 4px; }
   .pj-sync-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -364,6 +391,7 @@
     <button class="tabbtn" data-tab="perdivisi">Leasing per Divisi</button>
     <button class="tabbtn" data-tab="penjualan">Penjualan per Divisi</button>
     <button class="tabbtn" data-tab="rincian">Rincian Leasing (Umur Piutang)</button>
+    <button class="tabbtn" data-tab="followup">Followup Penagihan ke Leasing</button>
   </div>
 
   <div class="tabpane" id="tab-cabang">
@@ -411,6 +439,44 @@
   <div class="tabpane hidden" id="tab-rincian">
     <div class="rincian-note" id="rincianNote">Rincian seluruh faktur piutang berjalan, per cabang, diurutkan dari umur piutang tertinggi.</div>
     <div id="rincianWrap"></div>
+  </div>
+
+  <div class="tabpane hidden" id="tab-followup">
+    <div class="fu-toolbar-head">
+      <h2>Followup Penagihan ke Leasing</h2>
+      <span class="fu-hint">klik header kolom untuk urutkan</span>
+    </div>
+    <div class="fu-toolbar">
+      <input type="text" id="fuSearch" placeholder="Cari nama customer, faktur, atau salesman…">
+      <select id="fuLeasingFilter"><option value="">Semua leasing</option></select>
+      <select id="fuCabangFilter"><option value="">Semua cabang</option></select>
+      <div class="fu-status-tabs" id="fuStatusTabs">
+        <button class="active" data-status="all">Semua</button>
+        <button data-status="belum">Belum tagih</button>
+        <button data-status="sudah">Sudah tagih</button>
+      </div>
+    </div>
+    <div class="fu-table-wrap">
+      <table class="fu-table" id="fuTable">
+        <thead>
+          <tr>
+            <th data-key="nama">Nama Customer</th>
+            <th data-key="faktur">Faktur No.</th>
+            <th data-key="tglJto">Tgl JTO</th>
+            <th data-key="leasing">Leasing</th>
+            <th data-key="divisi">Cabang</th>
+            <th data-key="jumlah" style="text-align:right">Jumlah</th>
+            <th data-key="tglBuatTagihan">Tgl Buat Tagihan</th>
+            <th data-key="tglBarcode">Tgl Barcode</th>
+            <th data-key="salesman">Salesman</th>
+            <th data-key="supervisor">Supervisor</th>
+            <th data-key="hari" style="text-align:right">Hari</th>
+          </tr>
+        </thead>
+        <tbody id="fuBody"></tbody>
+      </table>
+    </div>
+    <div class="fu-count" id="fuCount"></div>
   </div>
 
   <!-- PRIORITY -->
@@ -910,6 +976,8 @@
         hari: cellNum(row[17]),
         salesman: cellStr(row[12]),
         supervisor: cellStr(row[13]),
+        tglBuatTagihan: cellStr(row[14]),
+        tglBarcode: cellStr(row[15]),
         followup: (row[16] && cellStr(row[16]) !== '#N/A') ? cellStr(row[16]) : '',
       });
     }
@@ -1017,7 +1085,7 @@
 
   function wireMainTabs() {
     const tabs = document.querySelectorAll('#mainTabs .tabbtn');
-    const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi'), penjualan: document.getElementById('tab-penjualan'), rincian: document.getElementById('tab-rincian') };
+    const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi'), penjualan: document.getElementById('tab-penjualan'), rincian: document.getElementById('tab-rincian'), followup: document.getElementById('tab-followup') };
     tabs.forEach(btn => {
       btn.addEventListener('click', () => {
         tabs.forEach(b => b.classList.toggle('active', b === btn));
@@ -1299,6 +1367,7 @@
     renderDivisionCards(agg.leasingBreakdown, computeBranchTotalsFromLeasing(agg.leasingBreakdown));
     renderPriorityTable(agg.priority);
     renderRincianLeasing(agg.allRows);
+    renderFollowupTable(agg.allRows);
 
     const prioCount = agg.priority.length;
     document.getElementById('prioHeadCount').textContent = prioCount
@@ -1369,6 +1438,105 @@
         </div>
       </div>`;
     }).join('');
+  }
+
+  /* ---------------- Followup Penagihan ke Leasing: search + filter + sortable table ---------------- */
+  let fuAllRows = [];
+  let fuState = { search: '', leasing: '', cabang: '', status: 'all', sortKey: 'hari', sortDir: 'desc' };
+
+  function isBelumTagih(r) {
+    return /belum/i.test(r.tglBuatTagihan || '');
+  }
+
+  function populateFollowupFilters(rows) {
+    const leasingSel = document.getElementById('fuLeasingFilter');
+    const cabangSel = document.getElementById('fuCabangFilter');
+    const leasingNames = Array.from(new Set(rows.map(r => (r.cara === 'Tunai' || !r.leasing) ? 'Tunai (Cash)' : r.leasing))).sort();
+    const cabangNames = Array.from(new Set(rows.map(r => r.divisi))).sort();
+    const curLeasing = leasingSel.value, curCabang = cabangSel.value;
+    leasingSel.innerHTML = '<option value="">Semua leasing</option>' + leasingNames.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
+    cabangSel.innerHTML = '<option value="">Semua cabang</option>' + cabangNames.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    if (leasingNames.includes(curLeasing)) leasingSel.value = curLeasing;
+    if (cabangNames.includes(curCabang)) cabangSel.value = curCabang;
+  }
+
+  function renderFollowupTable(rows) {
+    if (rows) fuAllRows = rows;
+    populateFollowupFilters(fuAllRows);
+    applyFollowupFilters();
+  }
+
+  function applyFollowupFilters() {
+    const q = fuState.search.trim().toLowerCase();
+    let list = fuAllRows.filter(r => {
+      const leasingKey = (r.cara === 'Tunai' || !r.leasing) ? 'Tunai (Cash)' : r.leasing;
+      if (fuState.leasing && leasingKey !== fuState.leasing) return false;
+      if (fuState.cabang && r.divisi !== fuState.cabang) return false;
+      if (fuState.status === 'belum' && !isBelumTagih(r)) return false;
+      if (fuState.status === 'sudah' && isBelumTagih(r)) return false;
+      if (q) {
+        const hay = `${r.nama} ${r.faktur} ${r.salesman}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    const key = fuState.sortKey, dir = fuState.sortDir === 'asc' ? 1 : -1;
+    list = list.slice().sort((a, b) => {
+      let va = a[key === 'divisi' ? 'divisi' : key];
+      let vb = b[key === 'divisi' ? 'divisi' : key];
+      if (key === 'leasing') { va = (a.cara === 'Tunai' || !a.leasing) ? 'Tunai (Cash)' : a.leasing; vb = (b.cara === 'Tunai' || !b.leasing) ? 'Tunai (Cash)' : b.leasing; }
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      return String(va || '').localeCompare(String(vb || '')) * dir;
+    });
+
+    const body = document.getElementById('fuBody');
+    body.innerHTML = list.map(r => {
+      const leasingKey = (r.cara === 'Tunai' || !r.leasing) ? 'Tunai (Cash)' : r.leasing;
+      const belum = isBelumTagih(r);
+      return `<tr class="${r.hari > 26 ? 'fu-highlight' : ''}">
+        <td>${esc(r.nama)}</td>
+        <td class="jumlah-mono">${esc(r.faktur)}</td>
+        <td>${esc(r.tglJtoDisplay)}</td>
+        <td>${esc(leasingKey)}</td>
+        <td>${esc(r.divisi)}</td>
+        <td class="fu-jumlah">${fmtRp(r.jumlah)}</td>
+        <td><span class="fu-status-pill ${belum ? 'belum' : 'sudah'}">${belum ? 'Belum' : 'Sudah'}</span>${!belum ? esc(r.tglBuatTagihan) : ''}</td>
+        <td>${esc(r.tglBarcode) && r.tglBarcode !== '#N/A' ? esc(r.tglBarcode) : '–'}</td>
+        <td>${esc(cleanSalesmanFull(r.salesman))}</td>
+        <td>${esc(r.supervisor) || '–'}</td>
+        <td class="fu-hari ${r.hari > 26 ? 'crit' : ''}">${r.hari} hr</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('fuCount').textContent = `${list.length} dari ${fuAllRows.length} faktur ditampilkan`;
+    document.querySelectorAll('#fuTable th[data-key]').forEach(th => {
+      const existing = th.querySelector('.sort-arrow');
+      if (existing) existing.remove();
+      if (th.dataset.key === fuState.sortKey) {
+        th.insertAdjacentHTML('beforeend', `<span class="sort-arrow">${fuState.sortDir === 'asc' ? '▲' : '▼'}</span>`);
+      }
+    });
+  }
+
+  function wireFollowupTab() {
+    document.getElementById('fuSearch').addEventListener('input', (e) => { fuState.search = e.target.value; applyFollowupFilters(); });
+    document.getElementById('fuLeasingFilter').addEventListener('change', (e) => { fuState.leasing = e.target.value; applyFollowupFilters(); });
+    document.getElementById('fuCabangFilter').addEventListener('change', (e) => { fuState.cabang = e.target.value; applyFollowupFilters(); });
+    document.querySelectorAll('#fuStatusTabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#fuStatusTabs button').forEach(b => b.classList.toggle('active', b === btn));
+        fuState.status = btn.dataset.status;
+        applyFollowupFilters();
+      });
+    });
+    document.querySelectorAll('#fuTable th[data-key]').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (fuState.sortKey === key) fuState.sortDir = fuState.sortDir === 'asc' ? 'desc' : 'asc';
+        else { fuState.sortKey = key; fuState.sortDir = key === 'hari' ? 'desc' : 'asc'; }
+        applyFollowupFilters();
+      });
+    });
   }
 
   /* ---------------- refresh Piutang from Google Sheets via JSONP ---------------- */
@@ -1459,6 +1627,8 @@
   renderPenjualanPerDivisi();
   renderPriorityTable(priority);
   renderRincianLeasing(null);
+  renderFollowupTable([]);
+  wireFollowupTab();
   initLocalFeatures();
   wireMainTabs();
   startAutoRefresh();
