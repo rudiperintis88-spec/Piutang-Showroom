@@ -550,7 +550,7 @@
   const leasingBreakdown = [
     { name:'TAF', count:32, sum:6664074830, byBranch:{ gatsu:{count:11,sum:2053468900}, flamboyan:{count:3,sum:638340000}, gagak:{count:18,sum:3972265930} } },
     { name:'ACC', count:26, sum:6634219997, byBranch:{ gatsu:{count:5,sum:1531830000}, flamboyan:{count:7,sum:1524749997}, gagak:{count:14,sum:3577640000} } },
-    { name:'Tunai (Cash)', count:9, sum:3221600000, byBranch:{ gatsu:{count:2,sum:945900000}, flamboyan:{count:6,sum:2032500000}, gagak:{count:1,sum:243200000} } },
+    { name:'Cash', count:9, sum:3221600000, byBranch:{ gatsu:{count:2,sum:945900000}, flamboyan:{count:6,sum:2032500000}, gagak:{count:1,sum:243200000} } },
     { name:'KKB', count:7, sum:2609849636, byBranch:{ gatsu:{count:6,sum:2393725474}, gagak:{count:1,sum:216124162} } },
     { name:'ADM', count:1, sum:1262600000, byBranch:{ flamboyan:{count:1,sum:1262600000} } },
     { name:'MTF', count:4, sum:974359900, byBranch:{ gagak:{count:4,sum:974359900} } },
@@ -616,7 +616,7 @@
 
     const leasingMap = {};
     rows.forEach(r => {
-      const key = (r.cara === 'Tunai' || !r.leasing) ? 'Tunai (Cash)' : r.leasing;
+      const key = (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing;
       if (!leasingMap[key]) leasingMap[key] = { name: key, count: 0, sum: 0, byBranch: {} };
       leasingMap[key].count += 1;
       leasingMap[key].sum += r.jumlah;
@@ -661,7 +661,7 @@
     const isCash0 = false;
     list.forEach(l => {
       const tr = document.createElement('tr');
-      const isCash = l.name === 'Tunai (Cash)';
+      const isCash = l.name === 'Cash';
       const branchCells = BRANCH_KEYS.map(bk => {
         const b = l.byBranch[bk];
         if (!b || !b.sum) return `<td class="lcell zero">–</td>`;
@@ -1386,7 +1386,7 @@
       wrap.innerHTML = '<div class="task-empty">Data belum tersedia — tunggu sinkron pertama selesai.</div>';
       return;
     }
-    const leasingKeyOf = r => (r.cara === 'Tunai' || !r.leasing) ? 'Tunai (Cash)' : r.leasing;
+    const leasingKeyOf = r => (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing;
     wrap.innerHTML = BRANCH_ORDER.map(name => {
       const meta = BRANCH_META[name];
       const sub = rows.filter(r => r.divisi === name);
@@ -1451,7 +1451,7 @@
   function populateFollowupFilters(rows) {
     const leasingSel = document.getElementById('fuLeasingFilter');
     const cabangSel = document.getElementById('fuCabangFilter');
-    const leasingNames = Array.from(new Set(rows.map(r => (r.cara === 'Tunai' || !r.leasing) ? 'Tunai (Cash)' : r.leasing))).sort();
+    const leasingNames = Array.from(new Set(rows.map(r => (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing))).sort();
     const cabangNames = Array.from(new Set(rows.map(r => r.divisi))).sort();
     const curLeasing = leasingSel.value, curCabang = cabangSel.value;
     leasingSel.innerHTML = '<option value="">Semua leasing</option>' + leasingNames.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
@@ -1469,7 +1469,7 @@
   function applyFollowupFilters() {
     const q = fuState.search.trim().toLowerCase();
     let list = fuAllRows.filter(r => {
-      const leasingKey = (r.cara === 'Tunai' || !r.leasing) ? 'Tunai (Cash)' : r.leasing;
+      const leasingKey = (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing;
       if (fuState.leasing && leasingKey !== fuState.leasing) return false;
       if (fuState.cabang && r.divisi !== fuState.cabang) return false;
       if (fuState.status === 'belum' && !isBelumTagih(r)) return false;
@@ -1492,7 +1492,7 @@
 
     const body = document.getElementById('fuBody');
     body.innerHTML = list.map(r => {
-      const leasingKey = (r.cara === 'Tunai' || !r.leasing) ? 'Tunai (Cash)' : r.leasing;
+      const leasingKey = (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing;
       const belum = isBelumTagih(r);
       return `<tr class="${r.hari > 26 ? 'fu-highlight' : ''}">
         <td>${esc(r.nama)}</td>
