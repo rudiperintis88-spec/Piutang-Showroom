@@ -1485,7 +1485,7 @@
     list = list.slice().sort((a, b) => {
       let va = a[key === 'divisi' ? 'divisi' : key];
       let vb = b[key === 'divisi' ? 'divisi' : key];
-      if (key === 'leasing') { va = (a.cara === 'Tunai' || !a.leasing) ? 'Tunai (Cash)' : a.leasing; vb = (b.cara === 'Tunai' || !b.leasing) ? 'Tunai (Cash)' : b.leasing; }
+      if (key === 'leasing') { va = (a.cara === 'Tunai' || !a.leasing) ? 'Cash' : a.leasing; vb = (b.cara === 'Tunai' || !b.leasing) ? 'Cash' : b.leasing; }
       if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
       return String(va || '').localeCompare(String(vb || '')) * dir;
     });
