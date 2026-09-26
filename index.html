@@ -153,6 +153,34 @@
   table.division-table tr.dtotal-row td { font-weight: 700; border-top: 1px solid var(--line); background: var(--panel-2); }
   table.division-table td.dnum { text-align: right; font-family: var(--mono); }
   table.division-table td.zero { color: var(--ink-faint); }
+  tr.dlrow.clickable { cursor: pointer; }
+  tr.dlrow.clickable:hover { background: var(--panel-2); }
+  tr.dlrow .dexp { display: inline-block; width: 12px; color: var(--ink-faint); font-size: 10px; }
+  tr.ddetail td { padding: 0; background: var(--bg-2); border-bottom: 1px solid var(--line-soft); }
+  tr.ddetail.hidden { display: none; }
+  table.detail-sub-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  table.detail-sub-table th { text-align: left; font-weight: 500; color: var(--ink-faint); padding: 6px 14px 6px 30px; font-size: 9.5px; border-bottom: 1px solid var(--line-soft); }
+  table.detail-sub-table td { padding: 6px 14px 6px 30px; border-bottom: 1px solid var(--line-soft); color: var(--ink-dim); }
+  table.detail-sub-table tr:last-child td { border-bottom: none; }
+  table.detail-sub-table td.dnum { text-align: right; font-family: var(--mono); }
+
+  /* rincian leasing (full detail per divisi) */
+  .rincian-note { font-size: 12px; color: var(--ink-faint); margin-bottom: 18px; }
+  .rincian-block { margin-bottom: 22px; }
+  .rincian-block .rhead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .rincian-block .rname { font-family: var(--serif); font-size: 16px; font-weight: 500; }
+  .rincian-block .rmeta { font-size: 11.5px; color: var(--ink-faint); }
+  .rincian-table-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow-x: auto; border-top: 3px solid var(--accent); }
+  table.rincian-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+  table.rincian-table th { text-align: left; font-weight: 500; color: var(--ink-faint); padding: 9px 14px; font-size: 10px; background: var(--panel-2); border-bottom: 1px solid var(--line); }
+  table.rincian-table td { padding: 9px 14px; border-bottom: 1px solid var(--line-soft); color: var(--ink); }
+  table.rincian-table tr:last-child td { border-bottom: none; }
+  table.rincian-table tr:hover td { background: var(--panel-2); }
+  table.rincian-table td.rnum { text-align: right; font-family: var(--mono); }
+  table.rincian-table td.rhari { text-align: right; font-family: var(--mono); font-weight: 700; }
+  table.rincian-table td.rhari.crit { color: var(--b4); }
+  tr.rgroup-row td { background: var(--panel-2); font-weight: 700; font-size: 11px; color: var(--ink-dim); padding: 7px 14px; border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: .03em; }
+  tr.rgroup-row td span { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ink-faint); font-family: var(--mono); font-size: 11px; }
 
   /* penjualan per divisi */
   .penjualan-note { font-size: 12px; color: var(--ink-faint); margin-bottom: 4px; }
@@ -335,6 +363,7 @@
     <button class="tabbtn" data-tab="ringkasan">Ringkasan Gabungan</button>
     <button class="tabbtn" data-tab="perdivisi">Leasing per Divisi</button>
     <button class="tabbtn" data-tab="penjualan">Penjualan per Divisi</button>
+    <button class="tabbtn" data-tab="rincian">Rincian Leasing (Umur Piutang)</button>
   </div>
 
   <div class="tabpane" id="tab-cabang">
@@ -377,6 +406,11 @@
       <div class="pj-subtitle">Penjualan per Leasing <span id="leasingMonthLabel">bulan berjalan</span> · per cabang</div>
       <div class="sales-leasing-grid" id="salesLeasingGrid"></div>
     </div>
+  </div>
+
+  <div class="tabpane hidden" id="tab-rincian">
+    <div class="rincian-note" id="rincianNote">Rincian seluruh faktur piutang berjalan, per cabang, diurutkan dari umur piutang tertinggi.</div>
+    <div id="rincianWrap"></div>
   </div>
 
   <!-- PRIORITY -->
@@ -521,15 +555,18 @@
       leasingMap[key].count += 1;
       leasingMap[key].sum += r.jumlah;
       const bkey = (BRANCH_META[r.divisi] || {}).key || 'gatsu';
-      if (!leasingMap[key].byBranch[bkey]) leasingMap[key].byBranch[bkey] = { count: 0, sum: 0 };
+      if (!leasingMap[key].byBranch[bkey]) leasingMap[key].byBranch[bkey] = { count: 0, sum: 0, invoices: [] };
       leasingMap[key].byBranch[bkey].count += 1;
       leasingMap[key].byBranch[bkey].sum += r.jumlah;
+      leasingMap[key].byBranch[bkey].invoices.push({
+        faktur: r.faktur, nama: r.nama, jumlah: r.jumlah, hari: r.hari, jto: r.tglJtoDisplay || '-',
+      });
     });
     const leasingBreakdown = Object.values(leasingMap)
       .map(l => ({ ...l, pct: totalAll ? (l.sum / totalAll) : 0 }))
       .sort((a,b) => b.sum - a.sum);
 
-    return { branches: branchesOut, priority: priorityOut, totalAll, count: rows.length, overallBuckets, leasingBreakdown };
+    return { branches: branchesOut, priority: priorityOut, totalAll, count: rows.length, overallBuckets, leasingBreakdown, allRows: rows };
   }
 
   /* ---------------- render branch cards ---------------- */
@@ -610,17 +647,35 @@
       card.className = 'division-card';
       card.style.setProperty('--accent', meta.color);
 
-      const rows = leasingList.map(l => {
+      const rowsHtml = leasingList.map((l, li) => {
         const b = l.byBranch[bk];
         const count = b ? b.count : 0;
         const sum = b ? b.sum : 0;
         const pct = bt.sum ? (sum / bt.sum * 100) : 0;
-        return `<tr>
-          <td>${esc(l.name)}</td>
+        const rid = `${bk}-${li}`;
+        const invoices = (b && b.invoices) || [];
+        const detailRows = invoices.slice().sort((a,c) => c.hari - a.hari).map(inv => `
+          <tr>
+            <td>${esc(inv.nama)}</td>
+            <td class="jumlah-mono">${esc(inv.faktur)}</td>
+            <td class="dnum">${fmtRp(inv.jumlah)}</td>
+            <td class="dnum">${inv.hari} hr</td>
+          </tr>`).join('');
+        const mainRow = `<tr class="dlrow ${count ? 'clickable' : ''}" data-detail="${rid}">
+          <td>${count ? '<span class="dexp">▸</span>' : ''}${esc(l.name)}</td>
           <td class="dnum ${!count?'zero':''}">${count || '–'}</td>
           <td class="dnum ${!sum?'zero':''}">${sum ? fmtRp(sum) : '–'}</td>
           <td class="dnum ${!sum?'zero':''}">${sum ? pct.toFixed(1)+'%' : '–'}</td>
         </tr>`;
+        const detailRow = count ? `<tr class="ddetail hidden" data-detailrow="${rid}">
+          <td colspan="4">
+            <table class="detail-sub-table">
+              <thead><tr><th>Debitur</th><th>Faktur</th><th style="text-align:right">Nominal</th><th style="text-align:right">Hari</th></tr></thead>
+              <tbody>${detailRows}</tbody>
+            </table>
+          </td>
+        </tr>` : '';
+        return mainRow + detailRow;
       }).join('');
 
       card.innerHTML = `
@@ -631,10 +686,20 @@
         </div>
         <table class="division-table">
           <thead><tr><th>Leasing</th><th style="text-align:right">Faktur</th><th style="text-align:right">Nilai</th><th style="text-align:right">%</th></tr></thead>
-          <tbody>${rows}
+          <tbody>${rowsHtml}
             <tr class="dtotal-row"><td>Total</td><td class="dnum">${bt.count}</td><td class="dnum">${fmtRp(bt.sum)}</td><td class="dnum">100.0%</td></tr>
           </tbody>
         </table>`;
+      card.querySelectorAll('tr.dlrow.clickable').forEach(tr => {
+        tr.addEventListener('click', () => {
+          const rid = tr.dataset.detail;
+          const detailTr = card.querySelector(`tr.ddetail[data-detailrow="${rid}"]`);
+          const exp = tr.querySelector('.dexp');
+          const willOpen = detailTr.classList.contains('hidden');
+          detailTr.classList.toggle('hidden');
+          if (exp) exp.textContent = willOpen ? '▾' : '▸';
+        });
+      });
       divisionGrid.appendChild(card);
     });
   }
@@ -839,9 +904,12 @@
         cara: cellStr(row[10]),
         leasing: cellStr(row[11]),
         jumlah,
+        giro: cellStr(row[7]),
+        type: cellStr(row[8]),
         tglJtoDisplay: cellStr(row[5]),
         hari: cellNum(row[17]),
         salesman: cellStr(row[12]),
+        supervisor: cellStr(row[13]),
         followup: (row[16] && cellStr(row[16]) !== '#N/A') ? cellStr(row[16]) : '',
       });
     }
@@ -949,7 +1017,7 @@
 
   function wireMainTabs() {
     const tabs = document.querySelectorAll('#mainTabs .tabbtn');
-    const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi'), penjualan: document.getElementById('tab-penjualan') };
+    const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi'), penjualan: document.getElementById('tab-penjualan'), rincian: document.getElementById('tab-rincian') };
     tabs.forEach(btn => {
       btn.addEventListener('click', () => {
         tabs.forEach(b => b.classList.toggle('active', b === btn));
@@ -1230,6 +1298,7 @@
     renderLeasingTable(agg.leasingBreakdown);
     renderDivisionCards(agg.leasingBreakdown, computeBranchTotalsFromLeasing(agg.leasingBreakdown));
     renderPriorityTable(agg.priority);
+    renderRincianLeasing(agg.allRows);
 
     const prioCount = agg.priority.length;
     document.getElementById('prioHeadCount').textContent = prioCount
@@ -1240,6 +1309,66 @@
     document.getElementById('prioHeadSum').innerHTML = prioCount
       ? `total tertunggak <b>${fmtRp(prioTotal)}</b> &nbsp;·&nbsp; ${distinctDebtors} debitur`
       : 'semua faktur berumur ≤ 26 hari';
+  }
+
+  function renderRincianLeasing(rows) {
+    const wrap = document.getElementById('rincianWrap');
+    if (!rows || !rows.length) {
+      wrap.innerHTML = '<div class="task-empty">Data belum tersedia — tunggu sinkron pertama selesai.</div>';
+      return;
+    }
+    const leasingKeyOf = r => (r.cara === 'Tunai' || !r.leasing) ? 'Tunai (Cash)' : r.leasing;
+    wrap.innerHTML = BRANCH_ORDER.map(name => {
+      const meta = BRANCH_META[name];
+      const sub = rows.filter(r => r.divisi === name);
+      const total = sub.reduce((s,r) => s + r.jumlah, 0);
+
+      const groupTotals = {};
+      sub.forEach(r => { const k = leasingKeyOf(r); groupTotals[k] = (groupTotals[k] || 0) + r.jumlah; });
+      const sorted = sub.slice().sort((a, b) => {
+        const ka = leasingKeyOf(a), kb = leasingKeyOf(b);
+        if (ka !== kb) return groupTotals[kb] - groupTotals[ka]; // bigger leasing group first
+        return b.hari - a.hari; // oldest (highest umur) first within the group
+      });
+
+      let lastKey = null;
+      const trs = sorted.map(r => {
+        const key = leasingKeyOf(r);
+        let groupHeader = '';
+        if (key !== lastKey) {
+          lastKey = key;
+          groupHeader = `<tr class="rgroup-row"><td colspan="10">${esc(key)} <span>· ${groupTotals[key] ? fmtRp(groupTotals[key]) : ''}</span></td></tr>`;
+        }
+        return groupHeader + `
+        <tr>
+          <td>${esc(r.nama)}</td>
+          <td class="jumlah-mono">${esc(r.faktur)}</td>
+          <td>${esc(r.tglJtoDisplay)}</td>
+          <td class="rnum">${fmtRp(r.jumlah)}</td>
+          <td class="rnum">${r.giro ? esc(r.giro) : '–'}</td>
+          <td>${esc(r.type) || '–'}</td>
+          <td>${esc(r.leasing) || esc(r.cara)}</td>
+          <td>${esc(cleanSalesmanFull(r.salesman))}</td>
+          <td>${esc(r.supervisor) || '–'}</td>
+          <td class="rhari ${r.hari > 26 ? 'crit' : ''}">${r.hari} hr</td>
+        </tr>`;
+      }).join('');
+      return `<div class="rincian-block" style="--accent:${meta.color}">
+        <div class="rhead">
+          <span class="rname">${name}</span>
+          <span class="rmeta">${sub.length} faktur · ${fmtRp(total)}</span>
+        </div>
+        <div class="rincian-table-wrap">
+          <table class="rincian-table">
+            <thead><tr>
+              <th>Nama Debitur</th><th>No. Faktur</th><th>Tgl. Jatuh Tempo</th><th style="text-align:right">Jumlah</th>
+              <th style="text-align:right">Giro</th><th>Type</th><th>Leasing</th><th>Salesman</th><th>Supervisor</th><th style="text-align:right">Hari</th>
+            </tr></thead>
+            <tbody>${trs}</tbody>
+          </table>
+        </div>
+      </div>`;
+    }).join('');
   }
 
   /* ---------------- refresh Piutang from Google Sheets via JSONP ---------------- */
@@ -1329,6 +1458,7 @@
   renderDivisionCards(leasingBreakdown, computeBranchTotalsFromLeasing(leasingBreakdown));
   renderPenjualanPerDivisi();
   renderPriorityTable(priority);
+  renderRincianLeasing(null);
   initLocalFeatures();
   wireMainTabs();
   startAutoRefresh();
