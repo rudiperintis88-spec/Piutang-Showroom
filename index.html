@@ -85,6 +85,23 @@
   .bchip .cnt { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
   .bchip.crit { background: var(--b4-bg); border-color: #F0555A44; }
   .bchip.crit .amt { color: var(--b4); }
+  .bchip { cursor: pointer; transition: box-shadow .12s, transform .12s; }
+  .bchip:hover { box-shadow: 0 3px 10px rgba(16,24,40,.09); }
+  .bchip.active { border-color: var(--accent2); box-shadow: 0 0 0 2px var(--accent2)33; }
+
+  .bucket-detail-panel { grid-column: 1 / -1; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 1px 3px rgba(16,24,40,.05); margin-top: 4px; overflow: hidden; }
+  .bucket-detail-panel.hidden { display: none; }
+  .bdp-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600; color: var(--ink); }
+  .bdp-head button { background: none; border: none; color: var(--ink-faint); font-size: 15px; cursor: pointer; padding: 2px 6px; }
+  .bdp-head button:hover { color: var(--ink); }
+  #bdpBody { max-height: 340px; overflow-y: auto; }
+  table.bdp-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.bdp-table th { text-align: left; font-weight: 500; color: var(--ink-faint); padding: 8px 18px; font-size: 10.5px; background: var(--panel-2); border-bottom: 1px solid var(--line); position: sticky; top: 0; }
+  table.bdp-table td { padding: 8px 18px; border-bottom: 1px solid var(--line-soft); }
+  table.bdp-table tr:last-child td { border-bottom: none; }
+  table.bdp-table tr:hover td { background: var(--panel-2); }
+  table.bdp-table td.bdp-num { text-align: right; font-family: var(--mono); }
+  .bdp-empty { padding: 24px 18px; color: var(--ink-faint); font-size: 13px; text-align: center; }
 
   /* ---------- section title ---------- */
   .stitle { display: flex; align-items: baseline; justify-content: space-between; margin: 40px 0 16px; flex-wrap: wrap; gap: 8px; }
@@ -375,10 +392,17 @@
       <div class="sub" id="heroSub">dari <b>85</b> faktur / unit &nbsp;·&nbsp; rata-rata <b>Rp 269.892.873</b> per unit</div>
     </div>
     <div class="hero-buckets" id="heroBuckets">
-      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b1)"></span>1–7 hari</span><div class="amt">Rp 14,46 M</div><div class="cnt">55 faktur</div></div>
-      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b2)"></span>8–14 hari</span><div class="amt">Rp 5,60 M</div><div class="cnt">21 faktur</div></div>
-      <div class="bchip"><span class="name"><span class="dot" style="background:var(--b3)"></span>15–26 hari</span><div class="amt">Rp 1,01 M</div><div class="cnt">5 faktur</div></div>
-      <div class="bchip crit"><span class="name"><span class="dot" style="background:var(--b4)"></span>&gt; 26 hari</span><div class="amt">Rp 1,87 M</div><div class="cnt">4 faktur · prioritas tagih</div></div>
+      <div class="bchip" data-bucket-idx="0"><span class="name"><span class="dot" style="background:var(--b1)"></span>1–7 hari</span><div class="amt">Rp 14,46 M</div><div class="cnt">55 faktur</div></div>
+      <div class="bchip" data-bucket-idx="1"><span class="name"><span class="dot" style="background:var(--b2)"></span>8–14 hari</span><div class="amt">Rp 5,60 M</div><div class="cnt">21 faktur</div></div>
+      <div class="bchip" data-bucket-idx="2"><span class="name"><span class="dot" style="background:var(--b3)"></span>15–26 hari</span><div class="amt">Rp 1,01 M</div><div class="cnt">5 faktur</div></div>
+      <div class="bchip crit" data-bucket-idx="3"><span class="name"><span class="dot" style="background:var(--b4)"></span>&gt; 26 hari</span><div class="amt">Rp 1,87 M</div><div class="cnt">4 faktur · prioritas tagih</div></div>
+    </div>
+    <div class="bucket-detail-panel hidden" id="bucketDetailPanel">
+      <div class="bdp-head">
+        <span id="bdpTitle">—</span>
+        <button id="bdpClose" title="Tutup">✕</button>
+      </div>
+      <div id="bdpBody"></div>
     </div>
   </div>
 
@@ -460,6 +484,7 @@
       <table class="fu-table" id="fuTable">
         <thead>
           <tr>
+            <th style="text-align:right">No</th>
             <th data-key="nama">Nama Customer</th>
             <th data-key="tglJto">Tgl JTO</th>
             <th data-key="leasing">Leasing</th>
@@ -489,7 +514,7 @@
     <table class="prio">
       <thead>
         <tr>
-          <th></th><th>Debitur</th><th>No. Faktur</th><th>Cabang</th><th>Metode</th>
+          <th></th><th>No</th><th>Debitur</th><th>No. Faktur</th><th>Cabang</th><th>Metode</th>
           <th>Jumlah</th><th>Tgl. Jatuh Tempo</th><th>Umur</th><th>Sales PIC</th>
         </tr>
       </thead>
@@ -658,8 +683,7 @@
 
   function renderLeasingTable(list) {
     leasingBody.innerHTML = '';
-    const isCash0 = false;
-    list.forEach(l => {
+    list.forEach((l, li) => {
       const tr = document.createElement('tr');
       const isCash = l.name === 'Cash';
       const branchCells = BRANCH_KEYS.map(bk => {
@@ -667,13 +691,52 @@
         if (!b || !b.sum) return `<td class="lcell zero">–</td>`;
         return `<td class="lcell">${fmtRp(b.sum)}<span class="lcount">${b.count} faktur</span></td>`;
       }).join('');
+      const rid = `lr-${li}`;
+      tr.className = 'dlrow clickable';
+      tr.dataset.detail = rid;
       tr.innerHTML = `
-        <td><span class="leasing-name">${esc(l.name)}</span>${isCash ? '<span class="tag">langsung, tanpa leasing</span>' : ''}</td>
+        <td><span class="dexp">▸</span><span class="leasing-name">${esc(l.name)}</span>${isCash ? '<span class="tag">langsung, tanpa leasing</span>' : ''}</td>
         ${branchCells}
         <td style="text-align:center">${l.count}</td>
         <td class="jumlah-mono">${fmtRp(l.sum)}</td>
         <td>${(l.pct*100).toFixed(1)}%</td>`;
       leasingBody.appendChild(tr);
+
+      const allInvoices = [];
+      BRANCH_KEYS.forEach(bk => {
+        const b = l.byBranch[bk];
+        if (b && b.invoices) b.invoices.forEach(inv => allInvoices.push({ ...inv, cabang: BRANCH_DISPLAY[bk].label }));
+      });
+      allInvoices.sort((a, b) => b.hari - a.hari);
+      const detailRows = allInvoices.map(inv => `
+        <tr>
+          <td>${esc(inv.cabang)}</td>
+          <td>${esc(inv.nama)}</td>
+          <td class="jumlah-mono">${esc(inv.faktur)}</td>
+          <td class="dnum">${fmtRp(inv.jumlah)}</td>
+          <td class="dnum">${inv.hari} hr</td>
+        </tr>`).join('');
+      const detailTr = document.createElement('tr');
+      detailTr.className = 'ddetail hidden';
+      detailTr.dataset.detailrow = rid;
+      detailTr.innerHTML = `<td colspan="7">
+        <table class="detail-sub-table">
+          <thead><tr><th>Cabang</th><th>Debitur</th><th>Faktur</th><th style="text-align:right">Nominal</th><th style="text-align:right">Hari</th></tr></thead>
+          <tbody>${detailRows || '<tr><td colspan="5" style="padding-left:14px;color:var(--ink-faint)">Tidak ada faktur</td></tr>'}</tbody>
+        </table>
+      </td>`;
+      leasingBody.appendChild(detailTr);
+    });
+
+    leasingBody.querySelectorAll('tr.dlrow.clickable').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const rid = tr.dataset.detail;
+        const detailTr = leasingBody.querySelector(`tr.ddetail[data-detailrow="${rid}"]`);
+        const exp = tr.querySelector('.dexp');
+        const willOpen = detailTr.classList.contains('hidden');
+        detailTr.classList.toggle('hidden');
+        if (exp) exp.textContent = willOpen ? '▾' : '▸';
+      });
     });
 
     // footer totals per column
@@ -1104,13 +1167,14 @@
     detailMeta = {};
     list.forEach(r => { detailMeta[slug(r.faktur)] = r; });
 
-    list.forEach(r => {
+    list.forEach((r, idx) => {
     const fslug = slug(r.faktur);
     const tr = document.createElement('tr');
     tr.className = 'rowmain';
     tr.dataset.faktur = fslug;
     tr.innerHTML = `
       <td><button class="expand-btn" data-toggle="${fslug}">+</button></td>
+      <td class="jumlah-mono">${idx + 1}</td>
       <td><div class="cust-name">${esc(r.name)}</div><div class="cust-id">${esc(r.id)}</div></td>
       <td class="jumlah-mono">${esc(r.faktur)}</td>
       <td><span class="pill ${r.cabang}">${esc(r.cabangLabel)}</span></td>
@@ -1126,7 +1190,7 @@
     detailTr.className = 'detail-row hidden';
     detailTr.dataset.faktur = fslug;
     const td = document.createElement('td');
-    td.colSpan = 9;
+    td.colSpan = 10;
     td.innerHTML = `
       <div class="detail-inner">
         <div class="detail-col">
@@ -1349,18 +1413,23 @@
   }
 
   /* ---------------- apply fresh aggregates to DOM ---------------- */
+  let lastAllRows = [];
+
   function applyAggregates(agg) {
     document.getElementById('heroTotal').textContent = fmtRp(agg.totalAll);
     document.getElementById('heroSub').innerHTML = `dari <b>${agg.count}</b> faktur / unit &nbsp;·&nbsp; rata-rata <b>${fmtRp(agg.count ? agg.totalAll/agg.count : 0)}</b> per unit`;
     document.getElementById('faktCountLabel').textContent = agg.count;
+    lastAllRows = agg.allRows || [];
 
     const bucketsEl = document.getElementById('heroBuckets');
     bucketsEl.innerHTML = agg.overallBuckets.map((bk, i) => `
-      <div class="bchip ${i===3?'crit':''}">
+      <div class="bchip ${i===3?'crit':''}" data-bucket-idx="${i}">
         <span class="name"><span class="dot" style="background:${bk.color || 'var(--b'+(i+1)+')'}"></span>${bk.label}</span>
         <div class="amt">${fmtShortRp(bk.sum)}</div>
         <div class="cnt">${bk.count} faktur${i===3?' · prioritas tagih':''}</div>
       </div>`).join('');
+    wireBucketChips(agg.overallBuckets);
+    closeBucketDetail();
 
     renderBranchCards(agg.branches);
     renderLeasingTable(agg.leasingBreakdown);
@@ -1378,6 +1447,55 @@
     document.getElementById('prioHeadSum').innerHTML = prioCount
       ? `total tertunggak <b>${fmtRp(prioTotal)}</b> &nbsp;·&nbsp; ${distinctDebtors} debitur`
       : 'semua faktur berumur ≤ 26 hari';
+  }
+
+  /* ---------------- bucket chip drill-down ---------------- */
+  let activeBucketIdx = null;
+
+  function wireBucketChips() {
+    document.querySelectorAll('#heroBuckets .bchip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const idx = Number(chip.dataset.bucketIdx);
+        if (activeBucketIdx === idx) { closeBucketDetail(); return; }
+        openBucketDetail(idx);
+      });
+    });
+  }
+
+  function closeBucketDetail() {
+    activeBucketIdx = null;
+    document.getElementById('bucketDetailPanel').classList.add('hidden');
+    document.querySelectorAll('#heroBuckets .bchip').forEach(c => c.classList.remove('active'));
+  }
+
+  function openBucketDetail(idx) {
+    activeBucketIdx = idx;
+    const bd = BUCKET_DEFS[idx];
+    document.querySelectorAll('#heroBuckets .bchip').forEach(c => c.classList.toggle('active', Number(c.dataset.bucketIdx) === idx));
+    const panel = document.getElementById('bucketDetailPanel');
+    panel.classList.remove('hidden');
+    document.getElementById('bdpTitle').textContent = `Faktur dengan umur ${bd.label}`;
+    const body = document.getElementById('bdpBody');
+    if (!lastAllRows.length) {
+      body.innerHTML = '<div class="bdp-empty">Data belum tersedia — klik tombol Refresh di atas dulu.</div>';
+      return;
+    }
+    const list = lastAllRows.filter(r => bd.test(r.hari)).sort((a,b) => b.hari - a.hari);
+    if (!list.length) {
+      body.innerHTML = '<div class="bdp-empty">Tidak ada faktur di kategori ini.</div>';
+      return;
+    }
+    body.innerHTML = `<table class="bdp-table">
+      <thead><tr><th>Debitur</th><th>Faktur</th><th>Cabang</th><th>Leasing</th><th style="text-align:right">Nominal</th><th style="text-align:right">Hari</th></tr></thead>
+      <tbody>${list.map(r => `<tr>
+        <td>${esc(r.nama)}</td>
+        <td class="jumlah-mono">${esc(r.faktur)}</td>
+        <td>${esc(r.divisi)}</td>
+        <td>${esc((r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing)}</td>
+        <td class="bdp-num">${fmtRp(r.jumlah)}</td>
+        <td class="bdp-num">${r.hari} hr</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
   }
 
   function renderRincianLeasing(rows) {
@@ -1401,15 +1519,19 @@
       });
 
       let lastKey = null;
+      let groupNo = 0;
       const trs = sorted.map(r => {
         const key = leasingKeyOf(r);
         let groupHeader = '';
         if (key !== lastKey) {
           lastKey = key;
-          groupHeader = `<tr class="rgroup-row"><td colspan="10">${esc(key)} <span>· ${groupTotals[key] ? fmtRp(groupTotals[key]) : ''}</span></td></tr>`;
+          groupNo = 0;
+          groupHeader = `<tr class="rgroup-row"><td colspan="11">${esc(key)} <span>· ${groupTotals[key] ? fmtRp(groupTotals[key]) : ''}</span></td></tr>`;
         }
+        groupNo += 1;
         return groupHeader + `
         <tr>
+          <td style="text-align:right">${groupNo}</td>
           <td>${esc(r.nama)}</td>
           <td class="jumlah-mono">${esc(r.faktur)}</td>
           <td>${esc(r.tglJtoDisplay)}</td>
@@ -1430,7 +1552,7 @@
         <div class="rincian-table-wrap">
           <table class="rincian-table">
             <thead><tr>
-              <th>Nama Debitur</th><th>No. Faktur</th><th>Tgl. Jatuh Tempo</th><th style="text-align:right">Jumlah</th>
+              <th style="text-align:right">No</th><th>Nama Debitur</th><th>No. Faktur</th><th>Tgl. Jatuh Tempo</th><th style="text-align:right">Jumlah</th>
               <th style="text-align:right">Giro</th><th>Type</th><th>Leasing</th><th>Salesman</th><th>Supervisor</th><th style="text-align:right">Hari</th>
             </tr></thead>
             <tbody>${trs}</tbody>
@@ -1482,19 +1604,32 @@
     });
 
     const key = fuState.sortKey, dir = fuState.sortDir === 'asc' ? 1 : -1;
+    const leasingOf = r => (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing;
+    const parseDMY = s => {
+      const m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : 0;
+    };
     list = list.slice().sort((a, b) => {
-      let va = a[key === 'divisi' ? 'divisi' : key];
-      let vb = b[key === 'divisi' ? 'divisi' : key];
-      if (key === 'leasing') { va = (a.cara === 'Tunai' || !a.leasing) ? 'Cash' : a.leasing; vb = (b.cara === 'Tunai' || !b.leasing) ? 'Cash' : b.leasing; }
+      if (key === 'leasing') {
+        // default/primary sort: Leasing → Tgl JTO → Hari
+        const va = leasingOf(a), vb = leasingOf(b);
+        if (va !== vb) return va.localeCompare(vb) * dir;
+        const da = parseDMY(a.tglJtoDisplay), db = parseDMY(b.tglJtoDisplay);
+        if (da !== db) return (da - db) * dir;
+        return (a.hari - b.hari) * dir;
+      }
+      let va = key === 'tglJto' ? parseDMY(a.tglJtoDisplay) : a[key];
+      let vb = key === 'tglJto' ? parseDMY(b.tglJtoDisplay) : b[key];
       if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
       return String(va || '').localeCompare(String(vb || '')) * dir;
     });
 
     const body = document.getElementById('fuBody');
-    body.innerHTML = list.map(r => {
-      const leasingKey = (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing;
+    body.innerHTML = list.map((r, idx) => {
+      const leasingKey = leasingOf(r);
       const belum = isBelumTagih(r);
       return `<tr class="${r.hari > 26 ? 'fu-highlight' : ''}">
+        <td style="text-align:right">${idx + 1}</td>
         <td>${esc(r.nama)}</td>
         <td>${esc(r.tglJtoDisplay)}</td>
         <td>${esc(leasingKey)}</td>
@@ -1629,6 +1764,8 @@
   renderRincianLeasing(null);
   renderFollowupTable([]);
   wireFollowupTab();
+  wireBucketChips();
+  document.getElementById('bdpClose').addEventListener('click', closeBucketDetail);
   initLocalFeatures();
   wireMainTabs();
   startAutoRefresh();
