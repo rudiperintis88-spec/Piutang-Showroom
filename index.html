@@ -102,6 +102,9 @@
   table.bdp-table tr:hover td { background: var(--panel-2); }
   table.bdp-table td.bdp-num { text-align: right; font-family: var(--mono); }
   .bdp-empty { padding: 24px 18px; color: var(--ink-faint); font-size: 13px; text-align: center; }
+  table.bdp-table th.bdp-sortable { cursor: pointer; user-select: none; }
+  table.bdp-table th.bdp-sortable:hover { color: var(--ink); }
+  table.bdp-table th .sort-arrow { font-size: 9px; margin-left: 3px; color: var(--accent2); }
 
   /* ---------- section title ---------- */
   .stitle { display: flex; align-items: baseline; justify-content: space-between; margin: 40px 0 16px; flex-wrap: wrap; gap: 8px; }
@@ -416,6 +419,7 @@
     <button class="tabbtn" data-tab="ringkasan">Ringkasan Gabungan</button>
     <button class="tabbtn" data-tab="perdivisi">Leasing per Divisi</button>
     <button class="tabbtn" data-tab="penjualan">Penjualan per Divisi</button>
+    <button class="tabbtn" data-tab="detailpenjualan">Detail Penjualan</button>
   </div>
 
   <div class="tabpane" id="tab-cabang">
@@ -457,6 +461,19 @@
 
       <div class="pj-subtitle">Penjualan per Leasing <span id="leasingMonthLabel">bulan berjalan</span> · per cabang</div>
       <div class="sales-leasing-grid" id="salesLeasingGrid"></div>
+    </div>
+  </div>
+
+  <div class="tabpane hidden" id="tab-detailpenjualan">
+    <div class="penjualanwrap">
+      <div class="pj-subtitle">Penjualan per Leasing <span id="dpLeasingLabel">bulan berjalan</span> · per cabang</div>
+      <div class="sales-leasing-grid" id="dpLeasingGrid"></div>
+
+      <div class="pj-subtitle">Penjualan per Insurance Company <span id="dpInsuranceLabel">bulan berjalan</span> · per cabang</div>
+      <div class="sales-leasing-grid" id="dpInsuranceGrid"></div>
+
+      <div class="pj-subtitle">Penjualan per Supervisor <span id="dpSupervisorLabel">bulan berjalan</span> · per cabang</div>
+      <div class="sales-leasing-grid" id="dpSupervisorGrid"></div>
     </div>
   </div>
 
@@ -867,6 +884,9 @@
   };
   let LEASING_MONTH_LABEL = 'September 2026';
 
+  let salesInsuranceCurrentMonth = { gatsu: [], flamboyan: [], gagak: [] };
+  let salesSupervisorCurrentMonth = { gatsu: [], flamboyan: [], gagak: [] };
+
   function renderPenjualanPerDivisi() {
     const grid = document.getElementById('penjualanGrid');
     const totalUnit = penjualanData.reduce((s,d) => s + d.unit, 0);
@@ -928,6 +948,37 @@
         </table>
       </div>`;
     }).join('');
+  }
+
+  function renderGenericSalesGrid(containerId, dataByBranch, colLabel) {
+    const grid = document.getElementById(containerId);
+    if (!grid) return;
+    grid.innerHTML = penjualanData.map(d => {
+      const list = dataByBranch[d.key] || [];
+      const total = list.reduce((s,l) => s + l.unit, 0);
+      const rows = list.map(l => `<tr><td>${esc(l.name)}</td><td class="slnum">${l.unit}</td></tr>`).join('');
+      return `<div class="sl-card" style="--accent:${d.color}">
+        <div class="slhead">
+          <div class="slname">${esc(d.name)}</div>
+          <div class="sltotal">${total} unit · ${LEASING_MONTH_LABEL}</div>
+        </div>
+        <table class="sl-table">
+          <thead><tr><th>${esc(colLabel)}</th><th style="text-align:right">Unit</th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="2" style="color:var(--ink-faint)">Belum ada data</td></tr>`}
+            <tr><td style="font-weight:700">Total</td><td class="slnum" style="font-weight:700">${total}</td></tr>
+          </tbody>
+        </table>
+      </div>`;
+    }).join('');
+  }
+
+  function renderDetailPenjualan() {
+    document.getElementById('dpLeasingLabel').textContent = LEASING_MONTH_LABEL;
+    document.getElementById('dpInsuranceLabel').textContent = LEASING_MONTH_LABEL;
+    document.getElementById('dpSupervisorLabel').textContent = LEASING_MONTH_LABEL;
+    renderGenericSalesGrid('dpLeasingGrid', salesLeasingCurrentMonth, 'Leasing / Metode');
+    renderGenericSalesGrid('dpInsuranceGrid', salesInsuranceCurrentMonth, 'Insurance Company');
+    renderGenericSalesGrid('dpSupervisorGrid', salesSupervisorCurrentMonth, 'Supervisor');
   }
 
   /* ---------------- fetch: Published-to-Web CSV (confirmed reachable for this sheet) ---------------- */
@@ -1061,7 +1112,7 @@
     for (const row of dataRows) {
       const tgl = parseDateWithFormat(row[1], dateFormat);
       if (!tgl) continue;
-      out.push({ tanggal: tgl, cara: cellStr(row[7]), divisi: cellStr(row[9]), statusFnc: cellStr(row[10]) });
+      out.push({ tanggal: tgl, cara: cellStr(row[7]), divisi: cellStr(row[9]), statusFnc: cellStr(row[10]), supervisor: cellStr(row[12]), asuransi: cellStr(row[18]) });
     }
     if (!out.length) { const e = new Error('Tidak ada baris data penjualan yang terbaca'); e.code = 'NO_ROWS'; throw e; }
     return out;
@@ -1109,10 +1160,34 @@
       newSalesLeasing[meta.key] = Object.entries(map).map(([name, unit]) => ({ name, unit })).sort((a, b) => b.unit - a.unit);
     });
 
+    const newSalesInsurance = {};
+    divOrder.forEach(name => {
+      const meta = BRANCH_META[name];
+      const sub = monthRows.filter(r => r.divisi === name);
+      const map = {};
+      sub.forEach(r => {
+        const key = (!r.asuransi || r.asuransi === '-') ? 'Non Asuransi' : r.asuransi;
+        map[key] = (map[key] || 0) + 1;
+      });
+      newSalesInsurance[meta.key] = Object.entries(map).map(([name, unit]) => ({ name, unit })).sort((a, b) => b.unit - a.unit);
+    });
+
+    const newSalesSupervisor = {};
+    divOrder.forEach(name => {
+      const meta = BRANCH_META[name];
+      const sub = monthRows.filter(r => r.divisi === name);
+      const map = {};
+      sub.forEach(r => {
+        const key = r.supervisor || '–';
+        map[key] = (map[key] || 0) + 1;
+      });
+      newSalesSupervisor[meta.key] = Object.entries(map).map(([name, unit]) => ({ name, unit })).sort((a, b) => b.unit - a.unit);
+    });
+
     const monthLabelLong = `${MONTHS_ID_LONG[currentMonth]} ${currentYear}`;
     const asOf = `${MONTHS_ID[0]} – ${MONTHS_ID[currentMonth]} ${currentYear} (tahun berjalan)`;
 
-    return { penjualanData: newPenjualanData, monthLabels: newMonthLabels, monthlyByDivision: newMonthlyByDivision, salesLeasing: newSalesLeasing, monthLabelLong, asOf };
+    return { penjualanData: newPenjualanData, monthLabels: newMonthLabels, monthlyByDivision: newMonthlyByDivision, salesLeasing: newSalesLeasing, salesInsurance: newSalesInsurance, salesSupervisor: newSalesSupervisor, monthLabelLong, asOf };
   }
 
   function setSalesSyncStatus(kind, text) {
@@ -1134,9 +1209,12 @@
       MONTH_LABELS = agg.monthLabels;
       monthlyByDivision = agg.monthlyByDivision;
       salesLeasingCurrentMonth = agg.salesLeasing;
+      salesInsuranceCurrentMonth = agg.salesInsurance;
+      salesSupervisorCurrentMonth = agg.salesSupervisor;
       LEASING_MONTH_LABEL = agg.monthLabelLong;
       PENJUALAN_ASOF = agg.asOf;
       renderPenjualanPerDivisi();
+      renderDetailPenjualan();
       const now = new Date();
       setSalesSyncStatus('', `🔄 Live · tersinkron ${fmtTglLong(now)}, ${fmtTimeShort(now)}`);
     } catch (err) {
@@ -1148,7 +1226,7 @@
 
   function wireMainTabs() {
     const tabs = document.querySelectorAll('#mainTabs .tabbtn');
-    const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi'), penjualan: document.getElementById('tab-penjualan'), rincian: document.getElementById('tab-rincian'), followup: document.getElementById('tab-followup') };
+    const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi'), penjualan: document.getElementById('tab-penjualan'), detailpenjualan: document.getElementById('tab-detailpenjualan'), rincian: document.getElementById('tab-rincian'), followup: document.getElementById('tab-followup') };
     tabs.forEach(btn => {
       btn.addEventListener('click', () => {
         tabs.forEach(b => b.classList.toggle('active', b === btn));
@@ -1468,34 +1546,75 @@
     document.querySelectorAll('#heroBuckets .bchip').forEach(c => c.classList.remove('active'));
   }
 
+  let bdpState = { idx: null, sortKey: 'hari', sortDir: 'desc' };
+
   function openBucketDetail(idx) {
     activeBucketIdx = idx;
+    if (bdpState.idx !== idx) bdpState = { idx, sortKey: 'hari', sortDir: 'desc' };
     const bd = BUCKET_DEFS[idx];
     document.querySelectorAll('#heroBuckets .bchip').forEach(c => c.classList.toggle('active', Number(c.dataset.bucketIdx) === idx));
     const panel = document.getElementById('bucketDetailPanel');
     panel.classList.remove('hidden');
     document.getElementById('bdpTitle').textContent = `Faktur dengan umur ${bd.label}`;
+    renderBucketDetailBody();
+  }
+
+  function renderBucketDetailBody() {
+    const bd = BUCKET_DEFS[bdpState.idx];
     const body = document.getElementById('bdpBody');
     if (!lastAllRows.length) {
       body.innerHTML = '<div class="bdp-empty">Data belum tersedia — klik tombol Refresh di atas dulu.</div>';
       return;
     }
-    const list = lastAllRows.filter(r => bd.test(r.hari)).sort((a,b) => b.hari - a.hari);
+    const list = lastAllRows.filter(r => bd.test(r.hari));
     if (!list.length) {
       body.innerHTML = '<div class="bdp-empty">Tidak ada faktur di kategori ini.</div>';
       return;
     }
+    const leasingOf = r => (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing;
+    const key = bdpState.sortKey, dir = bdpState.sortDir === 'asc' ? 1 : -1;
+    list.sort((a, b) => {
+      let va, vb;
+      if (key === 'nama') { va = a.nama; vb = b.nama; }
+      else if (key === 'divisi') { va = a.divisi; vb = b.divisi; }
+      else if (key === 'faktur') { va = a.faktur; vb = b.faktur; }
+      else if (key === 'leasing') { va = leasingOf(a); vb = leasingOf(b); }
+      else { va = a.hari; vb = b.hari; }
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      return String(va || '').localeCompare(String(vb || '')) * dir;
+    });
+    const cols = [
+      { key: 'nama', label: 'Debitur' },
+      { key: 'faktur', label: 'Faktur' },
+      { key: 'divisi', label: 'Cabang' },
+      { key: 'leasing', label: 'Leasing' },
+      { key: null, label: 'Nominal', num: true },
+      { key: 'hari', label: 'Hari', num: true },
+    ];
+    const headHtml = cols.map(c => {
+      if (!c.key) return `<th${c.num ? ' style="text-align:right"' : ''}>${c.label}</th>`;
+      const arrow = bdpState.sortKey === c.key ? `<span class="sort-arrow">${bdpState.sortDir === 'asc' ? '▲' : '▼'}</span>` : '';
+      return `<th${c.num ? ' style="text-align:right"' : ''} class="bdp-sortable" data-sort="${c.key}">${c.label}${arrow}</th>`;
+    }).join('');
     body.innerHTML = `<table class="bdp-table">
-      <thead><tr><th>Debitur</th><th>Faktur</th><th>Cabang</th><th>Leasing</th><th style="text-align:right">Nominal</th><th style="text-align:right">Hari</th></tr></thead>
-      <tbody>${list.map(r => `<tr>
-        <td>${esc(r.nama)}</td>
+      <thead><tr>${headHtml}</tr></thead>
+      <tbody>${list.map((r, i) => `<tr>
+        <td>${i + 1}. ${esc(r.nama)}</td>
         <td class="jumlah-mono">${esc(r.faktur)}</td>
         <td>${esc(r.divisi)}</td>
-        <td>${esc((r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing)}</td>
+        <td>${esc(leasingOf(r))}</td>
         <td class="bdp-num">${fmtRp(r.jumlah)}</td>
         <td class="bdp-num">${r.hari} hr</td>
       </tr>`).join('')}</tbody>
     </table>`;
+    body.querySelectorAll('th.bdp-sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const k = th.dataset.sort;
+        if (bdpState.sortKey === k) bdpState.sortDir = bdpState.sortDir === 'asc' ? 'desc' : 'asc';
+        else { bdpState.sortKey = k; bdpState.sortDir = 'asc'; }
+        renderBucketDetailBody();
+      });
+    });
   }
 
   function renderRincianLeasing(rows) {
@@ -1760,6 +1879,7 @@
   renderLeasingTable(leasingBreakdown);
   renderDivisionCards(leasingBreakdown, computeBranchTotalsFromLeasing(leasingBreakdown));
   renderPenjualanPerDivisi();
+  renderDetailPenjualan();
   renderPriorityTable(priority);
   renderRincianLeasing(null);
   renderFollowupTable([]);
