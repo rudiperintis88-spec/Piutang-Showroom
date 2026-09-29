@@ -1214,9 +1214,49 @@
     return rows;
   }
 
-  let dp2DetailSort = { key: 'tanggal', dir: 'asc' };
+  // Acuan urutan default untuk data export/tampilan, mengikuti jenis laporan yang
+  // sedang ditarik (field yang dikelompokkan selalu jadi kunci urut pertama):
+  //   per Leasing     -> Leasing, Supervisor, Tgl Faktur, Divisi
+  //   per Insurance   -> Insurance Company, Supervisor, Tgl Faktur, Divisi
+  //   per Supervisor  -> Supervisor, Leasing, Tgl Faktur, Divisi
+  //   per Salesman    -> Salesman, Supervisor, Tgl Faktur, Divisi
+  const DP2_SORT_REFERENCE = {
+    leasing: ['leasing', 'supervisor', 'tanggal', 'divisi'],
+    insurance: ['insurance', 'supervisor', 'tanggal', 'divisi'],
+    supervisor: ['supervisor', 'leasing', 'tanggal', 'divisi'],
+    salesman: ['salesman', 'supervisor', 'tanggal', 'divisi'],
+  };
+
+  function dp2FieldValue(r, field) {
+    if (field === 'leasing') return (r.cara === 'Tunai' || !r.statusFnc) ? 'Cash (Tunai)' : r.statusFnc;
+    if (field === 'insurance') return (!r.asuransi || r.asuransi === '-') ? 'Non Asuransi' : r.asuransi;
+    if (field === 'supervisor') return r.supervisor || '–';
+    if (field === 'salesman') return cleanSalesmanFull(r.salesman) || '–';
+    if (field === 'tanggal') return r.tanggal;
+    if (field === 'divisi') return r.divisi;
+    if (field === 'nama') return r.nama;
+    if (field === 'type') return r.type;
+    if (field === 'faktur') return r.faktur;
+    return '';
+  }
+
+  function dp2ReferenceSort(rows, groupBy) {
+    const fields = DP2_SORT_REFERENCE[groupBy] || ['tanggal'];
+    return rows.slice().sort((a, b) => {
+      for (const f of fields) {
+        const va = dp2FieldValue(a, f), vb = dp2FieldValue(b, f);
+        if (f === 'tanggal') { const d = va - vb; if (d !== 0) return d; continue; }
+        const cmp = String(va || '').localeCompare(String(vb || ''));
+        if (cmp !== 0) return cmp;
+      }
+      return 0;
+    });
+  }
+
+  let dp2DetailSort = null; // null = pakai acuan urutan bawaan sesuai jenis laporan; diisi setelah user klik header kolom
 
   function dp2SortRows(rows) {
+    if (!dp2DetailSort) return dp2ReferenceSort(rows, dp2State.groupBy);
     const key = dp2DetailSort.key, dir = dp2DetailSort.dir === 'asc' ? 1 : -1;
     return rows.slice().sort((a, b) => {
       if (key === 'tanggal') return (a.tanggal - b.tanggal) * dir;
@@ -1258,7 +1298,7 @@
       { key: 'salesman', label: 'Salesman' },
     ];
     const dp2HeadHtml = dp2Cols.map(c => {
-      const arrow = dp2DetailSort.key === c.key ? `<span class="sort-arrow">${dp2DetailSort.dir === 'asc' ? '▲' : '▼'}</span>` : '';
+      const arrow = (dp2DetailSort && dp2DetailSort.key === c.key) ? `<span class="sort-arrow">${dp2DetailSort.dir === 'asc' ? '▲' : '▼'}</span>` : '';
       return `<th class="bdp-sortable" data-sort="${c.key}">${c.label}${arrow}</th>`;
     }).join('');
     container.innerHTML = groupNames.map((gname, gi) => {
@@ -1287,8 +1327,8 @@
     container.querySelectorAll('th.bdp-sortable').forEach(th => {
       th.addEventListener('click', () => {
         const k = th.dataset.sort;
-        if (dp2DetailSort.key === k) dp2DetailSort.dir = dp2DetailSort.dir === 'asc' ? 'desc' : 'asc';
-        else { dp2DetailSort.key = k; dp2DetailSort.dir = 'asc'; }
+        if (dp2DetailSort && dp2DetailSort.key === k) dp2DetailSort.dir = dp2DetailSort.dir === 'asc' ? 'desc' : 'asc';
+        else { dp2DetailSort = { key: k, dir: 'asc' }; }
         renderDetailPenjualanV2();
       });
     });
@@ -1307,7 +1347,10 @@
 
   function gatherDp2ExportSheet() {
     const keyFn = dp2KeyFn(dp2State.groupBy);
-    const rows = getDp2FilteredRows().slice().sort((a, b) => a.tanggal - b.tanggal);
+    // Export selalu memakai acuan urutan baku sesuai jenis laporan yang ditarik
+    // (Leasing/Insurance/Supervisor/Salesman → Supervisor/Leasing → Tgl Faktur → Divisi),
+    // terlepas dari sort kolom yang sedang aktif di layar.
+    const rows = dp2ReferenceSort(getDp2FilteredRows(), dp2State.groupBy);
     const groupLabel = { leasing: 'Leasing', insurance: 'Insurance Company', supervisor: 'Supervisor', salesman: 'Salesman' }[dp2State.groupBy];
     return [{
       name: 'Detail Penjualan',
@@ -1320,7 +1363,7 @@
     document.getElementById('dp2Search').addEventListener('input', (e) => { dp2State.search = e.target.value; renderDetailPenjualanV2(); });
     document.getElementById('dp2DivisiSelect').addEventListener('change', (e) => { dp2State.divisi = e.target.value; renderDetailPenjualanV2(); });
     document.getElementById('dp2MonthSelect').addEventListener('change', (e) => { dp2State.monthKey = e.target.value; renderDetailPenjualanV2(); });
-    document.getElementById('dp2GroupSelect').addEventListener('change', (e) => { dp2State.groupBy = e.target.value; dp2State.collapsed.clear(); renderDetailPenjualanV2(); });
+    document.getElementById('dp2GroupSelect').addEventListener('change', (e) => { dp2State.groupBy = e.target.value; dp2State.collapsed.clear(); dp2DetailSort = null; renderDetailPenjualanV2(); });
     document.getElementById('dp2MinAll').addEventListener('click', () => {
       const keyFn = dp2KeyFn(dp2State.groupBy);
       const rows = getDp2FilteredRows();
