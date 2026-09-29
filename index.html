@@ -1125,6 +1125,13 @@
   }
 
   /* ---------------- generic export: Excel (SheetJS) & PDF (jsPDF+autotable) ---------------- */
+  // Acuan format tanggal untuk SEMUA laporan yang di-export: DD/MM/YYYY (mis. 01/09/2026).
+  function fmtDateExport(d) {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}/${mm}/${d.getFullYear()}`;
+  }
+
   function exportToExcel(filename, sheets) {
     if (typeof XLSX === 'undefined') { alert('Library Excel belum termuat — pastikan koneksi internet aktif, lalu coba lagi.'); return; }
     const wb = XLSX.utils.book_new();
@@ -1159,10 +1166,11 @@
       penjualanData.forEach(d => {
         monthsToShow.forEach(mw => {
           const list = (dataByBranchMonth[d.key] && dataByBranchMonth[d.key][mw.key]) || [];
-          list.forEach(l => rows.push([d.name, mw.longLabel, l.name, l.unit]));
+          // No di-reset tiap kartu Cabang + Bulan (mengikuti batas grup yang tampil di layar)
+          list.forEach((l, i) => rows.push([i + 1, d.name, mw.longLabel, l.name, l.unit]));
         });
       });
-      return { name, headers: ['Cabang', 'Bulan', name, 'Unit'], rows };
+      return { name, headers: ['No', 'Cabang', 'Bulan', name, 'Unit'], rows };
     }
     return [
       buildSheet('Leasing', monthlyCategoryData.leasing),
@@ -1349,13 +1357,21 @@
     const keyFn = dp2KeyFn(dp2State.groupBy);
     // Export selalu memakai acuan urutan baku sesuai jenis laporan yang ditarik
     // (Leasing/Insurance/Supervisor/Salesman → Supervisor/Leasing → Tgl Faktur → Divisi),
-    // terlepas dari sort kolom yang sedang aktif di layar.
+    // terlepas dari sort kolom yang sedang aktif di layar. No di-reset tiap ganti
+    // kategori (mis. ACC 1..N, lalu TAF mulai dari 1 lagi).
     const rows = dp2ReferenceSort(getDp2FilteredRows(), dp2State.groupBy);
     const groupLabel = { leasing: 'Leasing', insurance: 'Insurance Company', supervisor: 'Supervisor', salesman: 'Salesman' }[dp2State.groupBy];
+    let lastKey = null, no = 0;
+    const outRows = rows.map(r => {
+      const k = keyFn(r);
+      no = (k === lastKey) ? no + 1 : 1;
+      lastKey = k;
+      return [no, k, r.nama, r.type, r.faktur, fmtDateExport(r.tanggal), r.divisi, cleanSalesmanFull(r.salesman)];
+    });
     return [{
       name: 'Detail Penjualan',
       headers: ['No', groupLabel, 'Nama Debitur', 'Tipe Unit', 'Faktur', 'Tanggal', 'Cabang', 'Salesman'],
-      rows: rows.map((r, i) => [i + 1, keyFn(r), r.nama, r.type, r.faktur, r.tanggal.toLocaleDateString('id-ID'), r.divisi, cleanSalesmanFull(r.salesman)]),
+      rows: outRows,
     }];
   }
 
