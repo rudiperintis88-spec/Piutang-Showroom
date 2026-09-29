@@ -1132,12 +1132,21 @@
     return `${dd}/${mm}/${d.getFullYear()}`;
   }
 
+  // Mesin export bersama: tiap "sheet" berisi beberapa GRUP (mis. per Leasing:
+  // ACC, TAF, dst). Tiap grup mendapat baris judul sendiri + header kolom
+  // berulang, supaya jelas terpisah — bukan satu tabel panjang yang menyatu.
   function exportToExcel(filename, sheets) {
     if (typeof XLSX === 'undefined') { alert('Library Excel belum termuat — pastikan koneksi internet aktif, lalu coba lagi.'); return; }
     const wb = XLSX.utils.book_new();
     sheets.forEach(s => {
-      const data = [s.headers, ...s.rows];
-      const ws = XLSX.utils.aoa_to_sheet(data);
+      const matrix = [];
+      s.groups.forEach(g => {
+        if (g.title) matrix.push([g.title]);
+        matrix.push(g.headers);
+        g.rows.forEach(r => matrix.push(r));
+        matrix.push([]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(matrix);
       XLSX.utils.book_append_sheet(wb, ws, String(s.name).slice(0, 31));
     });
     XLSX.writeFile(wb, filename);
@@ -1147,11 +1156,22 @@
     if (!window.jspdf) { alert('Library PDF belum termuat — pastikan koneksi internet aktif, lalu coba lagi.'); return; }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
-    sheets.forEach((s, i) => {
-      if (i > 0) doc.addPage();
+    sheets.forEach((s, si) => {
+      if (si > 0) doc.addPage();
       doc.setFontSize(13);
       doc.text(`${title} — ${s.name}`, 14, 15);
-      doc.autoTable({ head: [s.headers], body: s.rows, startY: 20, styles: { fontSize: 7.5 } });
+      let y = 22;
+      s.groups.forEach(g => {
+        if (g.title) {
+          doc.setFontSize(10.5);
+          doc.setFont(undefined, 'bold');
+          doc.text(g.title, 14, y);
+          doc.setFont(undefined, 'normal');
+          y += 4;
+        }
+        doc.autoTable({ head: [g.headers], body: g.rows, startY: y, styles: { fontSize: 7.5 } });
+        y = doc.lastAutoTable.finalY + 8;
+      });
     });
     doc.save(filename);
   }
@@ -1162,15 +1182,18 @@
     const visibleMonths = monthWindow.slice(-dpRange);
     const monthsToShow = dpSelectedMonth === 'all' ? visibleMonths : visibleMonths.filter(mw => mw.key === dpSelectedMonth);
     function buildSheet(name, dataByBranchMonth) {
-      const rows = [];
+      const groups = [];
       penjualanData.forEach(d => {
         monthsToShow.forEach(mw => {
           const list = (dataByBranchMonth[d.key] && dataByBranchMonth[d.key][mw.key]) || [];
-          // No di-reset tiap kartu Cabang + Bulan (mengikuti batas grup yang tampil di layar)
-          list.forEach((l, i) => rows.push([i + 1, d.name, mw.longLabel, l.name, l.unit]));
+          groups.push({
+            title: `${d.name} — ${mw.longLabel}`,
+            headers: ['No', name, 'Unit'],
+            rows: list.map((l, i) => [i + 1, l.name, l.unit]),
+          });
         });
       });
-      return { name, headers: ['No', 'Cabang', 'Bulan', name, 'Unit'], rows };
+      return { name, groups };
     }
     return [
       buildSheet('Leasing', monthlyCategoryData.leasing),
@@ -1357,22 +1380,22 @@
     const keyFn = dp2KeyFn(dp2State.groupBy);
     // Export selalu memakai acuan urutan baku sesuai jenis laporan yang ditarik
     // (Leasing/Insurance/Supervisor/Salesman → Supervisor/Leasing → Tgl Faktur → Divisi),
-    // terlepas dari sort kolom yang sedang aktif di layar. No di-reset tiap ganti
-    // kategori (mis. ACC 1..N, lalu TAF mulai dari 1 lagi).
+    // terlepas dari sort kolom yang sedang aktif di layar. Tiap kategori (ACC, TAF, dst)
+    // jadi grup terpisah dengan judul + header sendiri, No reset mulai dari 1 tiap grup.
     const rows = dp2ReferenceSort(getDp2FilteredRows(), dp2State.groupBy);
     const groupLabel = { leasing: 'Leasing', insurance: 'Insurance Company', supervisor: 'Supervisor', salesman: 'Salesman' }[dp2State.groupBy];
-    let lastKey = null, no = 0;
-    const outRows = rows.map(r => {
+    const colHeaders = ['No', 'Nama Debitur', 'Tipe Unit', 'Faktur', 'Tanggal', 'Cabang', 'Salesman'];
+    const groups = [];
+    let current = null;
+    rows.forEach(r => {
       const k = keyFn(r);
-      no = (k === lastKey) ? no + 1 : 1;
-      lastKey = k;
-      return [no, k, r.nama, r.type, r.faktur, fmtDateExport(r.tanggal), r.divisi, cleanSalesmanFull(r.salesman)];
+      if (!current || current.key !== k) {
+        current = { key: k, title: `${groupLabel}: ${k}`, headers: colHeaders, rows: [] };
+        groups.push(current);
+      }
+      current.rows.push([current.rows.length + 1, r.nama, r.type, r.faktur, fmtDateExport(r.tanggal), r.divisi, cleanSalesmanFull(r.salesman)]);
     });
-    return [{
-      name: 'Detail Penjualan',
-      headers: ['No', groupLabel, 'Nama Debitur', 'Tipe Unit', 'Faktur', 'Tanggal', 'Cabang', 'Salesman'],
-      rows: outRows,
-    }];
+    return [{ name: 'Detail Penjualan', groups }];
   }
 
   function wireDetailPenjualanV2() {
@@ -1523,16 +1546,19 @@
     const visibleMonths = monthWindow.slice(-stRange);
     const monthsToShow = stSelectedMonth === 'all' ? visibleMonths : visibleMonths.filter(m => m.key === stSelectedMonth);
     return penjualanData.map(d => {
-      const rows = [];
-      monthsToShow.forEach(mw => {
+      const groups = monthsToShow.map(mw => {
         const sub = allSalesRows.filter(r => r.divisi === d.name && r.tanggal.getFullYear() === mw.y && r.tanggal.getMonth() === mw.m);
         const map = {};
         sub.forEach(r => { const k = cleanSalesmanFull(r.salesman) || '–'; map[k] = (map[k] || 0) + 1; });
         let list = Object.entries(map).map(([name, unit]) => ({ name, unit })).sort((a, b) => b.unit - a.unit);
         if (stTopN !== 'all') list = list.slice(0, stTopN);
-        list.forEach((l, i) => rows.push([i + 1, mw.longLabel, l.name, l.unit]));
+        return {
+          title: mw.longLabel,
+          headers: ['No', 'Salesman', 'Unit'],
+          rows: list.map((l, i) => [i + 1, l.name, l.unit]),
+        };
       });
-      return { name: d.name, headers: ['No', 'Bulan', 'Salesman', 'Unit'], rows };
+      return { name: d.name, groups };
     });
   }
 
