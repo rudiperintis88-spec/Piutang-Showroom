@@ -157,6 +157,7 @@
   .tabbtn:hover { color: var(--ink-dim); }
   .tabbtn.active { color: var(--ink); border-bottom-color: var(--accent2); }
   .tabpane.hidden { display: none; }
+  #priorityBlock.hidden { display: none; }
 
   /* per-division detail tables */
   .division-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -286,6 +287,31 @@
   .dp-pill { background: var(--panel-3); border: none; color: var(--ink-dim); border-radius: 20px; padding: 8px 16px; font-size: 13px; cursor: pointer; font-family: var(--sans); }
   .dp-pill.active { background: var(--ink); color: #fff; font-weight: 600; }
   .dp-pill:hover:not(.active) { background: var(--line-soft); }
+  .dp-export { display: flex; gap: 8px; margin-left: auto; }
+  .dp-export-btn { background: var(--panel); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 9px 14px; font-size: 12.5px; cursor: pointer; font-family: var(--sans); white-space: nowrap; }
+  .dp-export-btn:hover { background: var(--panel-2); }
+
+  /* Detail Penjualan v2: search + group-by + collapsible bars */
+  .dp2-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .dp2-search { flex: 1 1 260px; min-width: 200px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; font-size: 13px; color: var(--ink); font-family: var(--sans); }
+  .dp2-meta { font-size: 13px; color: var(--ink-faint); margin-bottom: 14px; }
+  .dp2-group-bar { display: flex; justify-content: space-between; align-items: center; background: #14213B; color: #fff; border-radius: 8px; padding: 16px 20px; margin-bottom: 10px; cursor: pointer; font-weight: 700; font-size: 14px; letter-spacing: .02em; }
+  .dp2-group-bar:hover { background: #1B2C4D; }
+  .dp2-group-bar .chevron { display: inline-block; margin-right: 10px; transition: transform .12s; font-weight: 400; }
+  .dp2-group-bar.open .chevron { transform: rotate(90deg); }
+  .dp2-group-detail { margin: -4px 0 14px; overflow-x: auto; }
+  .dp2-group-detail.hidden { display: none; }
+  table.dp2-table { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
+  table.dp2-table th { text-align: left; font-weight: 500; color: var(--ink-faint); padding: 9px 14px; font-size: 10.5px; background: var(--panel-2); border-bottom: 1px solid var(--line); }
+  table.dp2-table td { padding: 9px 14px; border-bottom: 1px solid var(--line-soft); }
+  table.dp2-table tr:last-child td { border-bottom: none; }
+  table.dp2-table td.dp2num { text-align: right; font-family: var(--mono); }
+
+  /* Sales Terbanyak */
+  .st-block { margin-bottom: 22px; }
+  .st-block .st-title { font-family: var(--serif); font-size: 15px; font-weight: 500; margin-bottom: 10px; }
+  .st-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .st-cards { grid-template-columns: 1fr; } }
   .prio-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 18px 20px; background: var(--b4-bg); border-bottom: 1px solid #F0555A3D; }
   .prio-head .t { display: flex; align-items: center; gap: 10px; }
   .prio-head .t .flag { width: 9px; height: 9px; border-radius: 50%; background: var(--b4); box-shadow: 0 0 0 4px #F0555A22; }
@@ -372,6 +398,9 @@
   }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -424,9 +453,10 @@
     <button class="tabbtn" data-tab="followup">Followup Penagihan ke Leasing</button>
     <button class="tabbtn" data-tab="rincian">Rincian Leasing (Umur Piutang)</button>
     <button class="tabbtn" data-tab="ringkasan">Ringkasan Gabungan</button>
-    <button class="tabbtn" data-tab="perdivisi">Leasing per Divisi</button>
+    <button class="tabbtn" data-tab="perdivisi">Kartu Ringkasan Divisi</button>
     <button class="tabbtn" data-tab="penjualan">Penjualan per Divisi</button>
     <button class="tabbtn" data-tab="detailpenjualan">Detail Penjualan</button>
+    <button class="tabbtn" data-tab="salesterbanyak">Sales Terbanyak</button>
   </div>
 
   <div class="tabpane" id="tab-cabang">
@@ -451,10 +481,34 @@
         <tfoot id="leasingFoot"></tfoot>
       </table>
     </div>
+
+    <div class="pj-subtitle">Leasing per Divisi <span>rincian per cabang</span></div>
+    <div class="division-grid" id="divisionGrid"></div>
   </div>
 
   <div class="tabpane hidden" id="tab-perdivisi">
-    <div class="division-grid" id="divisionGrid"></div>
+    <div class="dp-controls">
+      <select id="dpRangeSelect" class="dp-range-select">
+        <option value="1">Bulan berjalan</option>
+        <option value="3">3 bulan berjalan</option>
+        <option value="6">6 bulan berjalan</option>
+        <option value="12">12 bulan berjalan</option>
+      </select>
+      <div class="dp-pills" id="dpMonthPills"></div>
+      <div class="dp-export">
+        <button id="dpExportPdf" class="dp-export-btn">⭳ Export PDF</button>
+        <button id="dpExportExcel" class="dp-export-btn">⭳ Export Excel</button>
+      </div>
+    </div>
+
+    <div class="pj-subtitle">Penjualan per Leasing <span id="dpLeasingLabel">bulan berjalan</span></div>
+    <div class="sales-leasing-grid" id="dpLeasingGrid"></div>
+
+    <div class="pj-subtitle">Penjualan per Insurance Company <span id="dpInsuranceLabel">bulan berjalan</span></div>
+    <div class="sales-leasing-grid" id="dpInsuranceGrid"></div>
+
+    <div class="pj-subtitle">Penjualan per Supervisor <span id="dpSupervisorLabel">bulan berjalan</span></div>
+    <div class="sales-leasing-grid" id="dpSupervisorGrid"></div>
   </div>
 
   <div class="tabpane hidden" id="tab-penjualan">
@@ -472,29 +526,48 @@
   </div>
 
   <div class="tabpane hidden" id="tab-detailpenjualan">
-    <div class="penjualanwrap">
-      <div class="dp-controls">
-        <select id="dpRangeSelect" class="dp-range-select">
-          <option value="1">Bulan berjalan</option>
-          <option value="3">3 bulan berjalan</option>
-          <option value="6">6 bulan berjalan</option>
-        </select>
-        <div class="dp-pills" id="dpMonthPills"></div>
+    <div class="dp2-controls">
+      <input type="text" id="dp2Search" class="dp2-search" placeholder="Cari nama debitur, tipe unit, faktur, atau salesman...">
+      <select id="dp2DivisiSelect" class="dp-range-select"><option value="all">Semua Cabang</option></select>
+      <select id="dp2MonthSelect" class="dp-range-select"></select>
+      <select id="dp2GroupSelect" class="dp-range-select">
+        <option value="leasing">Kelompokkan: Leasing</option>
+        <option value="insurance">Kelompokkan: Insurance Company</option>
+        <option value="supervisor">Kelompokkan: Supervisor</option>
+        <option value="salesman">Kelompokkan: Salesman</option>
+      </select>
+      <button id="dp2MinAll" class="dp-export-btn">Minimize semua</button>
+      <button id="dp2OpenAll" class="dp-export-btn">Buka semua</button>
+      <div class="dp-export">
+        <button id="dp2ExportPdf" class="dp-export-btn">⭳ Export PDF</button>
+        <button id="dp2ExportExcel" class="dp-export-btn">⭳ Export Excel</button>
       </div>
-
-      <div class="pj-subtitle">Penjualan per Leasing <span id="dpLeasingLabel">bulan berjalan</span></div>
-      <div class="sales-leasing-grid" id="dpLeasingGrid"></div>
-
-      <div class="pj-subtitle">Penjualan per Insurance Company <span id="dpInsuranceLabel">bulan berjalan</span></div>
-      <div class="sales-leasing-grid" id="dpInsuranceGrid"></div>
-
-      <div class="pj-subtitle">Penjualan per Supervisor <span id="dpSupervisorLabel">bulan berjalan</span></div>
-      <div class="sales-leasing-grid" id="dpSupervisorGrid"></div>
     </div>
+    <div class="dp2-meta" id="dp2Meta"></div>
+    <div id="dp2Groups"></div>
+  </div>
+
+  <div class="tabpane hidden" id="tab-salesterbanyak">
+    <div class="dp-controls">
+      <select id="stRangeSelect" class="dp-range-select">
+        <option value="3">3 bulan berjalan</option>
+        <option value="6" selected>6 bulan berjalan</option>
+        <option value="12">12 bulan berjalan</option>
+      </select>
+      <div class="dp-pills" id="stMonthPills"></div>
+      <div class="dp-pills" id="stTopNPills"></div>
+    </div>
+    <div id="stGrid"></div>
   </div>
 
   <div class="tabpane hidden" id="tab-rincian">
     <div class="rincian-note" id="rincianNote">Rincian seluruh faktur piutang berjalan, per cabang, diurutkan dari umur piutang tertinggi.</div>
+    <div class="dp2-controls">
+      <input type="text" id="rcSearch" class="dp2-search" placeholder="Cari nama debitur, tipe unit, faktur, atau salesman...">
+      <select id="rcLeasingSelect" class="dp-range-select"><option value="all">Semua Leasing</option></select>
+      <button id="rcMinAll" class="dp-export-btn">Minimize semua</button>
+      <button id="rcOpenAll" class="dp-export-btn">Buka semua</button>
+    </div>
     <div id="rincianWrap"></div>
   </div>
 
@@ -538,11 +611,12 @@
   </div>
 
   <!-- PRIORITY -->
-  <div class="stitle"><h2>Prioritas Penagihan</h2><span>faktur dengan umur &gt; 26 hari · klik baris untuk catatan &amp; tugas</span></div>
-  <div class="priowrap">
-    <div class="prio-head">
-      <div class="t"><span class="flag"></span><h2 id="prioHeadCount">4 faktur butuh tindak lanjut segera</h2></div>
-      <div class="sum" id="prioHeadSum">total tertunggak <b>Rp 1.870.500.000</b> &nbsp;·&nbsp; 2 debitur</div>
+  <div id="priorityBlock">
+    <div class="stitle"><h2>Prioritas Penagihan</h2><span>faktur dengan umur &gt; 26 hari · klik baris untuk catatan &amp; tugas</span></div>
+    <div class="priowrap">
+      <div class="prio-head">
+        <div class="t"><span class="flag"></span><h2 id="prioHeadCount">4 faktur butuh tindak lanjut segera</h2></div>
+        <div class="sum" id="prioHeadSum">total tertunggak <b>Rp 1.870.500.000</b> &nbsp;·&nbsp; 2 debitur</div>
     </div>
     <table class="prio">
       <thead>
@@ -553,6 +627,7 @@
       </thead>
       <tbody id="prioBody"></tbody>
     </table>
+    </div>
   </div>
 
   <!-- GENERAL TASKS -->
@@ -802,12 +877,13 @@
 
   function renderDivisionCards(leasingList, branchTotals) {
     divisionGrid.innerHTML = '';
-    BRANCH_KEYS.forEach(bk => {
+    BRANCH_KEYS.forEach((bk, bidx) => {
       const meta = BRANCH_DISPLAY[bk];
       const bt = branchTotals[bk] || { count: 0, sum: 0 };
       const card = document.createElement('div');
       card.className = 'division-card';
       card.style.setProperty('--accent', meta.color);
+      card.dataset.no = bidx + 1;
 
       const rowsHtml = leasingList.map((l, li) => {
         const b = l.byBranch[bk];
@@ -842,7 +918,7 @@
 
       card.innerHTML = `
         <div class="dhead">
-          <div class="dname">${meta.label}</div>
+          <div class="dname">${bidx + 1}. ${meta.label}</div>
           <div class="dtotal">${fmtRp(bt.sum)}</div>
           <div class="dcount">${bt.count} faktur</div>
         </div>
@@ -910,6 +986,7 @@
   };
   let dpRange = 1;
   let dpSelectedMonth = 'all';
+  let allSalesRows = [];
 
   function renderPenjualanPerDivisi() {
     const grid = document.getElementById('penjualanGrid');
@@ -1029,7 +1106,228 @@
     renderGenericSalesGrid('dpSupervisorGrid', monthlyCategoryData.supervisor, 'Supervisor');
   }
 
-  /* ---------------- fetch: Published-to-Web CSV (confirmed reachable for this sheet) ---------------- */
+  /* ---------------- generic export: Excel (SheetJS) & PDF (jsPDF+autotable) ---------------- */
+  function exportToExcel(filename, sheets) {
+    if (typeof XLSX === 'undefined') { alert('Library Excel belum termuat — pastikan koneksi internet aktif, lalu coba lagi.'); return; }
+    const wb = XLSX.utils.book_new();
+    sheets.forEach(s => {
+      const data = [s.headers, ...s.rows];
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, String(s.name).slice(0, 31));
+    });
+    XLSX.writeFile(wb, filename);
+  }
+
+  function exportToPdf(filename, title, sheets) {
+    if (!window.jspdf) { alert('Library PDF belum termuat — pastikan koneksi internet aktif, lalu coba lagi.'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    sheets.forEach((s, i) => {
+      if (i > 0) doc.addPage();
+      doc.setFontSize(13);
+      doc.text(`${title} — ${s.name}`, 14, 15);
+      doc.autoTable({ head: [s.headers], body: s.rows, startY: 20, styles: { fontSize: 7.5 } });
+    });
+    doc.save(filename);
+  }
+
+  // gathers the exact rows currently visible in the Kartu Ringkasan Divisi cards
+  // (respects the active range/month filter), one export sheet per report.
+  function gatherKrdExportSheets() {
+    const visibleMonths = monthWindow.slice(-dpRange);
+    const monthsToShow = dpSelectedMonth === 'all' ? visibleMonths : visibleMonths.filter(mw => mw.key === dpSelectedMonth);
+    function buildSheet(name, dataByBranchMonth) {
+      const rows = [];
+      penjualanData.forEach(d => {
+        monthsToShow.forEach(mw => {
+          const list = (dataByBranchMonth[d.key] && dataByBranchMonth[d.key][mw.key]) || [];
+          list.forEach(l => rows.push([d.name, mw.longLabel, l.name, l.unit]));
+        });
+      });
+      return { name, headers: ['Cabang', 'Bulan', name, 'Unit'], rows };
+    }
+    return [
+      buildSheet('Leasing', monthlyCategoryData.leasing),
+      buildSheet('Insurance Company', monthlyCategoryData.insurance),
+      buildSheet('Supervisor', monthlyCategoryData.supervisor),
+    ];
+  }
+
+  /* ---------------- Detail Penjualan v2: search + group-by + collapsible ---------------- */
+  let dp2State = { search: '', divisi: 'all', monthKey: null, groupBy: 'leasing', collapsed: new Set() };
+
+  function dp2KeyFn(groupBy) {
+    if (groupBy === 'leasing') return r => (r.cara === 'Tunai' || !r.statusFnc) ? 'Cash (Tunai)' : r.statusFnc;
+    if (groupBy === 'insurance') return r => (!r.asuransi || r.asuransi === '-') ? 'Non Asuransi' : r.asuransi;
+    if (groupBy === 'supervisor') return r => r.supervisor || '–';
+    return r => cleanSalesmanFull(r.salesman) || '–';
+  }
+
+  function populateDp2Selectors() {
+    const divSel = document.getElementById('dp2DivisiSelect');
+    if (divSel.options.length <= 1) {
+      divSel.innerHTML = '<option value="all">Semua Cabang</option>' + penjualanData.map(d => `<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('');
+    }
+    const monthSel = document.getElementById('dp2MonthSelect');
+    if (!monthSel.dataset.populated && monthWindow.length) {
+      monthSel.innerHTML = '<option value="all">Semua Bulan</option>' + monthWindow.slice().reverse().map(mw => `<option value="${mw.key}">${esc(mw.longLabel)}</option>`).join('');
+      monthSel.dataset.populated = '1';
+      if (!dp2State.monthKey) dp2State.monthKey = monthWindow[monthWindow.length - 1].key;
+      monthSel.value = dp2State.monthKey;
+    }
+  }
+
+  function getDp2FilteredRows() {
+    let rows = allSalesRows;
+    if (dp2State.divisi !== 'all') rows = rows.filter(r => r.divisi === dp2State.divisi);
+    if (dp2State.monthKey && dp2State.monthKey !== 'all') {
+      const mw = monthWindow.find(m => m.key === dp2State.monthKey);
+      if (mw) rows = rows.filter(r => r.tanggal.getFullYear() === mw.y && r.tanggal.getMonth() === mw.m);
+    }
+    const search = dp2State.search.trim().toLowerCase();
+    if (search) {
+      rows = rows.filter(r =>
+        (r.nama || '').toLowerCase().includes(search) ||
+        (r.type || '').toLowerCase().includes(search) ||
+        (r.faktur || '').toLowerCase().includes(search) ||
+        cleanSalesmanFull(r.salesman).toLowerCase().includes(search)
+      );
+    }
+    return rows;
+  }
+
+  function renderDetailPenjualanV2() {
+    populateDp2Selectors();
+    const keyFn = dp2KeyFn(dp2State.groupBy);
+    const rows = getDp2FilteredRows();
+
+    const groups = {};
+    rows.forEach(r => { (groups[keyFn(r)] ||= []).push(r); });
+    const groupNames = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+
+    const divLabel = dp2State.divisi === 'all' ? '' : ` · ${esc(dp2State.divisi)}`;
+    const mwEntry = monthWindow.find(m => m.key === dp2State.monthKey);
+    const mwLabel = (!dp2State.monthKey || dp2State.monthKey === 'all') ? 'Semua Bulan' : (mwEntry ? mwEntry.longLabel : '');
+    document.getElementById('dp2Meta').textContent = `${rows.length} unit${divLabel} · ${mwLabel}`;
+
+    const container = document.getElementById('dp2Groups');
+    if (!groupNames.length) {
+      container.innerHTML = '<div class="task-empty">Tidak ada data yang cocok.</div>';
+      return;
+    }
+    container.innerHTML = groupNames.map((gname, gi) => {
+      const list = groups[gname];
+      const isOpen = !dp2State.collapsed.has(gname);
+      const detailRows = list.slice().sort((a, b) => b.tanggal - a.tanggal).map(r => `
+        <tr>
+          <td>${esc(r.nama)}</td>
+          <td>${esc(r.type)}</td>
+          <td class="jumlah-mono">${esc(r.faktur)}</td>
+          <td>${r.tanggal.toLocaleDateString('id-ID')}</td>
+          <td>${esc(r.divisi)}</td>
+          <td>${esc(cleanSalesmanFull(r.salesman))}</td>
+        </tr>`).join('');
+      return `
+        <div class="dp2-group-bar ${isOpen ? 'open' : ''}" data-groupidx="${gi}"><span><span class="chevron">▸</span>${esc(gname)}</span><span>${list.length} unit</span></div>
+        <div class="dp2-group-detail ${isOpen ? '' : 'hidden'}" data-groupdetailidx="${gi}">
+          <table class="dp2-table">
+            <thead><tr><th>Nama Debitur</th><th>Tipe Unit</th><th>Faktur</th><th>Tanggal</th><th>Cabang</th><th>Salesman</th></tr></thead>
+            <tbody>${detailRows}</tbody>
+          </table>
+        </div>`;
+    }).join('');
+
+    container.querySelectorAll('.dp2-group-bar').forEach((bar, gi) => {
+      bar.addEventListener('click', () => {
+        const gname = groupNames[gi];
+        const detail = container.querySelector(`[data-groupdetailidx="${gi}"]`);
+        const willOpen = detail.classList.contains('hidden');
+        detail.classList.toggle('hidden');
+        bar.classList.toggle('open', willOpen);
+        if (willOpen) dp2State.collapsed.delete(gname); else dp2State.collapsed.add(gname);
+      });
+    });
+  }
+
+  function gatherDp2ExportSheet() {
+    const keyFn = dp2KeyFn(dp2State.groupBy);
+    const rows = getDp2FilteredRows().slice().sort((a, b) => b.tanggal - a.tanggal);
+    const groupLabel = { leasing: 'Leasing', insurance: 'Insurance Company', supervisor: 'Supervisor', salesman: 'Salesman' }[dp2State.groupBy];
+    return [{
+      name: 'Detail Penjualan',
+      headers: [groupLabel, 'Nama Debitur', 'Tipe Unit', 'Faktur', 'Tanggal', 'Cabang', 'Salesman'],
+      rows: rows.map(r => [keyFn(r), r.nama, r.type, r.faktur, r.tanggal.toLocaleDateString('id-ID'), r.divisi, cleanSalesmanFull(r.salesman)]),
+    }];
+  }
+
+  function wireDetailPenjualanV2() {
+    document.getElementById('dp2Search').addEventListener('input', (e) => { dp2State.search = e.target.value; renderDetailPenjualanV2(); });
+    document.getElementById('dp2DivisiSelect').addEventListener('change', (e) => { dp2State.divisi = e.target.value; renderDetailPenjualanV2(); });
+    document.getElementById('dp2MonthSelect').addEventListener('change', (e) => { dp2State.monthKey = e.target.value; renderDetailPenjualanV2(); });
+    document.getElementById('dp2GroupSelect').addEventListener('change', (e) => { dp2State.groupBy = e.target.value; dp2State.collapsed.clear(); renderDetailPenjualanV2(); });
+    document.getElementById('dp2MinAll').addEventListener('click', () => {
+      const keyFn = dp2KeyFn(dp2State.groupBy);
+      const rows = getDp2FilteredRows();
+      const names = new Set(rows.map(keyFn));
+      names.forEach(n => dp2State.collapsed.add(n));
+      renderDetailPenjualanV2();
+    });
+    document.getElementById('dp2OpenAll').addEventListener('click', () => { dp2State.collapsed.clear(); renderDetailPenjualanV2(); });
+    document.getElementById('dp2ExportExcel').addEventListener('click', () => exportToExcel('Detail_Penjualan.xlsx', gatherDp2ExportSheet()));
+    document.getElementById('dp2ExportPdf').addEventListener('click', () => exportToPdf('Detail_Penjualan.pdf', 'Detail Penjualan', gatherDp2ExportSheet()));
+  }
+
+
+  /* ---------------- Sales Terbanyak tab ---------------- */
+  let stRange = 6;
+  let stSelectedMonth = 'all';
+  let stTopN = 10;
+
+  function renderSalesTerbanyak() {
+    const stTab = document.getElementById('stMonthPills');
+    if (!stTab) return;
+    const visibleMonths = monthWindow.slice(-stRange);
+    if (!visibleMonths.length) return;
+    const pillsEl = document.getElementById('stMonthPills');
+    const pills = [{ key: 'all', label: 'Semua' }, ...visibleMonths.map(mw => ({ key: mw.key, label: mw.shortLabel }))];
+    pillsEl.innerHTML = pills.map(p => `<button class="dp-pill ${stSelectedMonth===p.key?'active':''}" data-month="${esc(p.key)}">${esc(p.label)}</button>`).join('');
+    pillsEl.querySelectorAll('.dp-pill').forEach(btn => {
+      btn.addEventListener('click', () => { stSelectedMonth = btn.dataset.month; renderSalesTerbanyak(); });
+    });
+
+    const topnEl = document.getElementById('stTopNPills');
+    const topnOptions = [{ key: '5', label: '5 Terbanyak' }, { key: '10', label: '10 Terbanyak' }, { key: 'all', label: 'Semua' }];
+    topnEl.innerHTML = topnOptions.map(o => `<button class="dp-pill ${String(stTopN)===o.key?'active':''}" data-topn="${o.key}">${esc(o.label)}</button>`).join('');
+    topnEl.querySelectorAll('.dp-pill').forEach(btn => {
+      btn.addEventListener('click', () => { stTopN = btn.dataset.topn === 'all' ? 'all' : Number(btn.dataset.topn); renderSalesTerbanyak(); });
+    });
+
+    const monthsToShow = stSelectedMonth === 'all' ? visibleMonths : visibleMonths.filter(m => m.key === stSelectedMonth);
+    const first = visibleMonths[0], last = visibleMonths[visibleMonths.length - 1];
+    const rangeLabel = `${MONTHS_ID[first.m]}–${MONTHS_ID[last.m]} ${last.y}`;
+
+    const grid = document.getElementById('stGrid');
+    grid.innerHTML = penjualanData.map(d => {
+      const cardsHtml = monthsToShow.map(mw => {
+        const sub = allSalesRows.filter(r => r.divisi === d.name && r.tanggal.getFullYear() === mw.y && r.tanggal.getMonth() === mw.m);
+        const map = {};
+        sub.forEach(r => { const k = cleanSalesmanFull(r.salesman) || '–'; map[k] = (map[k] || 0) + 1; });
+        let list = Object.entries(map).map(([name, unit]) => ({ name, unit })).sort((a, b) => b.unit - a.unit);
+        if (stTopN !== 'all') list = list.slice(0, stTopN);
+        const rowsHtml = list.map(l => `<tr><td>${esc(l.name)}</td><td class="slnum">${l.unit}</td></tr>`).join('');
+        return `<div class="sl-card" style="--accent:${d.color}">
+          <div class="slhead"><div class="slname">${esc(d.name)}</div><div class="sltotal">${sub.length} unit · ${esc(mw.longLabel)}</div></div>
+          <table class="sl-table"><thead><tr><th>Salesman</th><th style="text-align:right">Unit</th></tr></thead>
+          <tbody>${rowsHtml || '<tr><td colspan="2" style="color:var(--ink-faint)">Belum ada data</td></tr>'}</tbody></table>
+        </div>`;
+      }).join('');
+      return `<div class="st-block">
+        <div class="st-title">Sales Terbanyak <span style="color:var(--ink-faint); font-weight:400; font-family:var(--sans); font-size:12px">${esc(rangeLabel)} · ${esc(d.name)}</span></div>
+        <div class="st-cards">${cardsHtml}</div>
+      </div>`;
+    }).join('');
+  }
+
   const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=860325626&single=true&output=csv';
   const SALES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=0&single=true&output=csv';
 
@@ -1160,7 +1458,7 @@
     for (const row of dataRows) {
       const tgl = parseDateWithFormat(row[1], dateFormat);
       if (!tgl) continue;
-      out.push({ tanggal: tgl, cara: cellStr(row[7]), divisi: cellStr(row[9]), statusFnc: cellStr(row[10]), supervisor: cellStr(row[12]), asuransi: cellStr(row[18]) });
+      out.push({ tanggal: tgl, cara: cellStr(row[7]), divisi: cellStr(row[9]), statusFnc: cellStr(row[10]), supervisor: cellStr(row[12]), asuransi: cellStr(row[18]), nama: cellStr(row[3]), type: cellStr(row[5]), faktur: cellStr(row[2]), salesman: cellStr(row[11]) });
     }
     if (!out.length) { const e = new Error('Tidak ada baris data penjualan yang terbaca'); e.code = 'NO_ROWS'; throw e; }
     return out;
@@ -1239,7 +1537,7 @@
     // Detail Penjualan range/month filter — handles year rollover (e.g. Nov,Des of
     // the previous year when currentMonth is Jan/Feb).
     const newMonthWindow = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 11; i >= 0; i--) {
       let mm = currentMonth - i, yy2 = currentYear;
       while (mm < 0) { mm += 12; yy2 -= 1; }
       newMonthWindow.push({ y: yy2, m: mm, key: `${yy2}-${mm}`, shortLabel: `${MONTHS_ID[mm]} ${String(yy2).slice(2)}`, longLabel: `${MONTHS_ID_LONG[mm]} ${yy2}` });
@@ -1285,6 +1583,7 @@
       const text = await res.text();
       const rows = parseCSVFull(text);
       const salesRows = parseSalesRows(rows);
+      allSalesRows = salesRows;
       const agg = computeSalesAggregates(salesRows);
       penjualanData = agg.penjualanData;
       MONTH_LABELS = agg.monthLabels;
@@ -1298,6 +1597,8 @@
       PENJUALAN_ASOF = agg.asOf;
       renderPenjualanPerDivisi();
       renderDetailPenjualan();
+      renderDetailPenjualanV2();
+      renderSalesTerbanyak();
       const now = new Date();
       setSalesSyncStatus('', `🔄 Live · tersinkron ${fmtTglLong(now)}, ${fmtTimeShort(now)}`);
     } catch (err) {
@@ -1309,13 +1610,20 @@
 
   function wireMainTabs() {
     const tabs = document.querySelectorAll('#mainTabs .tabbtn');
-    const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi'), penjualan: document.getElementById('tab-penjualan'), detailpenjualan: document.getElementById('tab-detailpenjualan'), rincian: document.getElementById('tab-rincian'), followup: document.getElementById('tab-followup') };
+    const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi'), penjualan: document.getElementById('tab-penjualan'), detailpenjualan: document.getElementById('tab-detailpenjualan'), rincian: document.getElementById('tab-rincian'), followup: document.getElementById('tab-followup'), salesterbanyak: document.getElementById('tab-salesterbanyak') };
+    const priorityBlock = document.getElementById('priorityBlock');
+    const PRIORITY_VISIBLE_TABS = ['cabang', 'followup'];
+    function updatePriorityVisibility(tabKey) {
+      if (priorityBlock) priorityBlock.classList.toggle('hidden', !PRIORITY_VISIBLE_TABS.includes(tabKey));
+    }
     tabs.forEach(btn => {
       btn.addEventListener('click', () => {
         tabs.forEach(b => b.classList.toggle('active', b === btn));
         Object.keys(panes).forEach(key => panes[key].classList.toggle('hidden', key !== btn.dataset.tab));
+        updatePriorityVisibility(btn.dataset.tab);
       });
     });
+    updatePriorityVisibility('cabang');
   }
 
 
@@ -1700,69 +2008,112 @@
     });
   }
 
+  let rincianState = { search: '', leasingFilter: 'all', collapsed: new Set() };
+  let lastRincianRows = null;
+
+  function populateRincianLeasingSelect(rows) {
+    const sel = document.getElementById('rcLeasingSelect');
+    if (sel.dataset.populated) return;
+    const leasingKeyOf = r => (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing;
+    const names = Array.from(new Set(rows.map(leasingKeyOf))).sort();
+    sel.innerHTML = '<option value="all">Semua Leasing</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    sel.dataset.populated = '1';
+  }
+
   function renderRincianLeasing(rows) {
+    if (rows) lastRincianRows = rows;
+    rows = lastRincianRows;
     const wrap = document.getElementById('rincianWrap');
     if (!rows || !rows.length) {
       wrap.innerHTML = '<div class="task-empty">Data belum tersedia — tunggu sinkron pertama selesai.</div>';
       return;
     }
+    populateRincianLeasingSelect(rows);
     const leasingKeyOf = r => (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing;
+
+    const search = rincianState.search.trim().toLowerCase();
+    let filtered = rows;
+    if (rincianState.leasingFilter !== 'all') filtered = filtered.filter(r => leasingKeyOf(r) === rincianState.leasingFilter);
+    if (search) {
+      filtered = filtered.filter(r =>
+        (r.nama || '').toLowerCase().includes(search) ||
+        (r.type || '').toLowerCase().includes(search) ||
+        (r.faktur || '').toLowerCase().includes(search) ||
+        cleanSalesmanFull(r.salesman).toLowerCase().includes(search)
+      );
+    }
+
     wrap.innerHTML = BRANCH_ORDER.map(name => {
       const meta = BRANCH_META[name];
-      const sub = rows.filter(r => r.divisi === name);
+      const sub = filtered.filter(r => r.divisi === name);
       const total = sub.reduce((s,r) => s + r.jumlah, 0);
 
       const groupTotals = {};
       sub.forEach(r => { const k = leasingKeyOf(r); groupTotals[k] = (groupTotals[k] || 0) + r.jumlah; });
-      const sorted = sub.slice().sort((a, b) => {
-        const ka = leasingKeyOf(a), kb = leasingKeyOf(b);
-        if (ka !== kb) return groupTotals[kb] - groupTotals[ka]; // bigger leasing group first
-        return b.hari - a.hari; // oldest (highest umur) first within the group
-      });
+      const groupKeys = Object.keys(groupTotals).sort((a,b) => groupTotals[b] - groupTotals[a]);
 
-      let lastKey = null;
-      let groupNo = 0;
-      const trs = sorted.map(r => {
-        const key = leasingKeyOf(r);
-        let groupHeader = '';
-        if (key !== lastKey) {
-          lastKey = key;
-          groupNo = 0;
-          groupHeader = `<tr class="rgroup-row"><td colspan="11">${esc(key)} <span>· ${groupTotals[key] ? fmtRp(groupTotals[key]) : ''}</span></td></tr>`;
-        }
-        groupNo += 1;
-        return groupHeader + `
-        <tr>
-          <td style="text-align:right">${groupNo}</td>
-          <td>${esc(r.nama)}</td>
-          <td class="jumlah-mono">${esc(r.faktur)}</td>
-          <td>${esc(r.tglJtoDisplay)}</td>
-          <td class="rnum">${fmtRp(r.jumlah)}</td>
-          <td class="rnum">${r.giro ? esc(r.giro) : '–'}</td>
-          <td>${esc(r.type) || '–'}</td>
-          <td>${esc(r.leasing) || esc(r.cara)}</td>
-          <td>${esc(cleanSalesmanFull(r.salesman))}</td>
-          <td>${esc(r.supervisor) || '–'}</td>
-          <td class="rhari ${r.hari > 26 ? 'crit' : ''}">${r.hari} hr</td>
-        </tr>`;
+      const blocks = groupKeys.map(key => {
+        const glist = sub.filter(r => leasingKeyOf(r) === key).sort((a,b) => b.hari - a.hari);
+        const gid = `${meta.key}__${key}`;
+        const isOpen = !rincianState.collapsed.has(gid);
+        const trs = glist.map((r, i) => `
+          <tr>
+            <td style="text-align:right">${i + 1}</td>
+            <td>${esc(r.nama)}</td>
+            <td class="jumlah-mono">${esc(r.faktur)}</td>
+            <td>${esc(r.tglJtoDisplay)}</td>
+            <td class="rnum">${fmtRp(r.jumlah)}</td>
+            <td class="rnum">${r.giro ? esc(r.giro) : '–'}</td>
+            <td>${esc(r.type) || '–'}</td>
+            <td>${esc(r.leasing) || esc(r.cara)}</td>
+            <td>${esc(cleanSalesmanFull(r.salesman))}</td>
+            <td>${esc(r.supervisor) || '–'}</td>
+            <td class="rhari ${r.hari > 26 ? 'crit' : ''}">${r.hari} hr</td>
+          </tr>`).join('');
+        return `
+          <div class="dp2-group-bar ${isOpen?'open':''}" data-gid="${esc(gid)}"><span><span class="chevron">▸</span>${esc(key)}</span><span>${glist.length} faktur · ${fmtRp(groupTotals[key])}</span></div>
+          <div class="rincian-table-wrap dp2-group-detail ${isOpen?'':'hidden'}" data-gdetail="${esc(gid)}">
+            <table class="rincian-table">
+              <thead><tr>
+                <th style="text-align:right">No</th><th>Nama Debitur</th><th>No. Faktur</th><th>Tgl. Jatuh Tempo</th><th style="text-align:right">Jumlah</th>
+                <th style="text-align:right">Giro</th><th>Type</th><th>Leasing</th><th>Salesman</th><th>Supervisor</th><th style="text-align:right">Hari</th>
+              </tr></thead>
+              <tbody>${trs}</tbody>
+            </table>
+          </div>`;
       }).join('');
+
       return `<div class="rincian-block" style="--accent:${meta.color}">
         <div class="rhead">
           <span class="rname">${name}</span>
           <span class="rmeta">${sub.length} faktur · ${fmtRp(total)}</span>
         </div>
-        <div class="rincian-table-wrap">
-          <table class="rincian-table">
-            <thead><tr>
-              <th style="text-align:right">No</th><th>Nama Debitur</th><th>No. Faktur</th><th>Tgl. Jatuh Tempo</th><th style="text-align:right">Jumlah</th>
-              <th style="text-align:right">Giro</th><th>Type</th><th>Leasing</th><th>Salesman</th><th>Supervisor</th><th style="text-align:right">Hari</th>
-            </tr></thead>
-            <tbody>${trs}</tbody>
-          </table>
-        </div>
+        ${blocks || '<div class="task-empty">Tidak ada faktur yang cocok.</div>'}
       </div>`;
     }).join('');
+
+    wrap.querySelectorAll('.dp2-group-bar').forEach(bar => {
+      bar.addEventListener('click', () => {
+        const gid = bar.dataset.gid;
+        const detail = wrap.querySelector(`[data-gdetail="${CSS.escape(gid)}"]`);
+        const willOpen = detail.classList.contains('hidden');
+        detail.classList.toggle('hidden');
+        bar.classList.toggle('open', willOpen);
+        if (willOpen) rincianState.collapsed.delete(gid); else rincianState.collapsed.add(gid);
+      });
+    });
   }
+
+  function wireRincianLeasingControls() {
+    document.getElementById('rcSearch').addEventListener('input', (e) => { rincianState.search = e.target.value; renderRincianLeasing(); });
+    document.getElementById('rcLeasingSelect').addEventListener('change', (e) => { rincianState.leasingFilter = e.target.value; renderRincianLeasing(); });
+    document.getElementById('rcMinAll').addEventListener('click', () => {
+      document.querySelectorAll('#rincianWrap .dp2-group-bar').forEach(bar => rincianState.collapsed.add(bar.dataset.gid));
+      renderRincianLeasing();
+    });
+    document.getElementById('rcOpenAll').addEventListener('click', () => { rincianState.collapsed.clear(); renderRincianLeasing(); });
+  }
+
 
   /* ---------------- Followup Penagihan ke Leasing: search + filter + sortable table ---------------- */
   let fuAllRows = [];
@@ -1968,10 +2319,17 @@
     dpSelectedMonth = 'all';
     renderDetailPenjualan();
   });
+  document.getElementById('dpExportExcel').addEventListener('click', () => {
+    exportToExcel('Kartu_Ringkasan_Divisi.xlsx', gatherKrdExportSheets());
+  });
+  document.getElementById('dpExportPdf').addEventListener('click', () => {
+    exportToPdf('Kartu_Ringkasan_Divisi.pdf', 'Kartu Ringkasan Divisi', gatherKrdExportSheets());
+  });
   renderPriorityTable(priority);
   renderRincianLeasing(null);
   renderFollowupTable([]);
   wireFollowupTab();
+  wireRincianLeasingControls();
   wireBucketChips();
   document.getElementById('bdpClose').addEventListener('click', closeBucketDetail);
   initLocalFeatures();
