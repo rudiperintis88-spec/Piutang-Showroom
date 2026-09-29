@@ -279,6 +279,13 @@
   table.sl-table td { padding: 7px 14px; border-bottom: 1px solid var(--line-soft); }
   table.sl-table tr:last-child td { border-bottom: none; }
   table.sl-table td.slnum { text-align: right; font-family: var(--mono); }
+
+  .dp-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .dp-range-select { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--ink); font-family: var(--sans); cursor: pointer; }
+  .dp-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .dp-pill { background: var(--panel-3); border: none; color: var(--ink-dim); border-radius: 20px; padding: 8px 16px; font-size: 13px; cursor: pointer; font-family: var(--sans); }
+  .dp-pill.active { background: var(--ink); color: #fff; font-weight: 600; }
+  .dp-pill:hover:not(.active) { background: var(--line-soft); }
   .prio-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 18px 20px; background: var(--b4-bg); border-bottom: 1px solid #F0555A3D; }
   .prio-head .t { display: flex; align-items: center; gap: 10px; }
   .prio-head .t .flag { width: 9px; height: 9px; border-radius: 50%; background: var(--b4); box-shadow: 0 0 0 4px #F0555A22; }
@@ -466,13 +473,22 @@
 
   <div class="tabpane hidden" id="tab-detailpenjualan">
     <div class="penjualanwrap">
-      <div class="pj-subtitle">Penjualan per Leasing <span id="dpLeasingLabel">bulan berjalan</span> · per cabang</div>
+      <div class="dp-controls">
+        <select id="dpRangeSelect" class="dp-range-select">
+          <option value="1">Bulan berjalan</option>
+          <option value="3">3 bulan berjalan</option>
+          <option value="6">6 bulan berjalan</option>
+        </select>
+        <div class="dp-pills" id="dpMonthPills"></div>
+      </div>
+
+      <div class="pj-subtitle">Penjualan per Leasing <span id="dpLeasingLabel">bulan berjalan</span></div>
       <div class="sales-leasing-grid" id="dpLeasingGrid"></div>
 
-      <div class="pj-subtitle">Penjualan per Insurance Company <span id="dpInsuranceLabel">bulan berjalan</span> · per cabang</div>
+      <div class="pj-subtitle">Penjualan per Insurance Company <span id="dpInsuranceLabel">bulan berjalan</span></div>
       <div class="sales-leasing-grid" id="dpInsuranceGrid"></div>
 
-      <div class="pj-subtitle">Penjualan per Supervisor <span id="dpSupervisorLabel">bulan berjalan</span> · per cabang</div>
+      <div class="pj-subtitle">Penjualan per Supervisor <span id="dpSupervisorLabel">bulan berjalan</span></div>
       <div class="sales-leasing-grid" id="dpSupervisorGrid"></div>
     </div>
   </div>
@@ -886,6 +902,14 @@
 
   let salesInsuranceCurrentMonth = { gatsu: [], flamboyan: [], gagak: [] };
   let salesSupervisorCurrentMonth = { gatsu: [], flamboyan: [], gagak: [] };
+  let monthWindow = [{ key: 'cur', shortLabel: 'Sep 26', longLabel: 'September 2026' }];
+  let monthlyCategoryData = {
+    leasing: { gatsu: { cur: [] }, flamboyan: { cur: [] }, gagak: { cur: [] } },
+    insurance: { gatsu: { cur: [] }, flamboyan: { cur: [] }, gagak: { cur: [] } },
+    supervisor: { gatsu: { cur: [] }, flamboyan: { cur: [] }, gagak: { cur: [] } },
+  };
+  let dpRange = 1;
+  let dpSelectedMonth = 'all';
 
   function renderPenjualanPerDivisi() {
     const grid = document.getElementById('penjualanGrid');
@@ -950,35 +974,59 @@
     }).join('');
   }
 
-  function renderGenericSalesGrid(containerId, dataByBranch, colLabel) {
+  function renderGenericSalesGrid(containerId, categoryDataByBranchMonth, colLabel) {
     const grid = document.getElementById(containerId);
     if (!grid) return;
-    grid.innerHTML = penjualanData.map(d => {
-      const list = dataByBranch[d.key] || [];
-      const total = list.reduce((s,l) => s + l.unit, 0);
-      const rows = list.map(l => `<tr><td>${esc(l.name)}</td><td class="slnum">${l.unit}</td></tr>`).join('');
-      return `<div class="sl-card" style="--accent:${d.color}">
-        <div class="slhead">
-          <div class="slname">${esc(d.name)}</div>
-          <div class="sltotal">${total} unit · ${LEASING_MONTH_LABEL}</div>
-        </div>
-        <table class="sl-table">
-          <thead><tr><th>${esc(colLabel)}</th><th style="text-align:right">Unit</th></tr></thead>
-          <tbody>${rows || `<tr><td colspan="2" style="color:var(--ink-faint)">Belum ada data</td></tr>`}
-            <tr><td style="font-weight:700">Total</td><td class="slnum" style="font-weight:700">${total}</td></tr>
-          </tbody>
-        </table>
-      </div>`;
-    }).join('');
+    const visibleMonths = monthWindow.slice(-dpRange);
+    const monthsToShow = dpSelectedMonth === 'all' ? visibleMonths : visibleMonths.filter(mw => mw.key === dpSelectedMonth);
+    let cardsHtml = '';
+    penjualanData.forEach(d => {
+      monthsToShow.forEach(mw => {
+        const byMonth = categoryDataByBranchMonth[d.key] || {};
+        const list = byMonth[mw.key] || [];
+        const total = list.reduce((s,l) => s + l.unit, 0);
+        const rows = list.map(l => `<tr><td>${esc(l.name)}</td><td class="slnum">${l.unit}</td></tr>`).join('');
+        cardsHtml += `<div class="sl-card" style="--accent:${d.color}">
+          <div class="slhead">
+            <div class="slname">${esc(d.name)}</div>
+            <div class="sltotal">${total} unit · ${esc(mw.longLabel)}</div>
+          </div>
+          <table class="sl-table">
+            <thead><tr><th>${esc(colLabel)}</th><th style="text-align:right">Unit</th></tr></thead>
+            <tbody>${rows || `<tr><td colspan="2" style="color:var(--ink-faint)">Belum ada data</td></tr>`}
+              <tr><td style="font-weight:700">Total</td><td class="slnum" style="font-weight:700">${total}</td></tr>
+            </tbody>
+          </table>
+        </div>`;
+      });
+    });
+    grid.innerHTML = cardsHtml;
+  }
+
+  function renderDpControls() {
+    const visibleMonths = monthWindow.slice(-dpRange);
+    const pillsEl = document.getElementById('dpMonthPills');
+    const pills = [{ key: 'all', label: 'Semua' }, ...visibleMonths.map(mw => ({ key: mw.key, label: mw.shortLabel }))];
+    pillsEl.innerHTML = pills.map(p => `<button class="dp-pill ${dpSelectedMonth===p.key?'active':''}" data-month="${esc(p.key)}">${esc(p.label)}</button>`).join('');
+    pillsEl.querySelectorAll('.dp-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        dpSelectedMonth = btn.dataset.month;
+        renderDetailPenjualan();
+      });
+    });
+    const first = visibleMonths[0], last = visibleMonths[visibleMonths.length - 1];
+    const rangeText = dpRange === 1 ? last.longLabel : `${first.shortLabel} – ${last.shortLabel}`;
+    ['dpLeasingLabel', 'dpInsuranceLabel', 'dpSupervisorLabel'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = dpSelectedMonth === 'all' ? rangeText : (visibleMonths.find(m => m.key === dpSelectedMonth) || last).longLabel;
+    });
   }
 
   function renderDetailPenjualan() {
-    document.getElementById('dpLeasingLabel').textContent = LEASING_MONTH_LABEL;
-    document.getElementById('dpInsuranceLabel').textContent = LEASING_MONTH_LABEL;
-    document.getElementById('dpSupervisorLabel').textContent = LEASING_MONTH_LABEL;
-    renderGenericSalesGrid('dpLeasingGrid', salesLeasingCurrentMonth, 'Leasing / Metode');
-    renderGenericSalesGrid('dpInsuranceGrid', salesInsuranceCurrentMonth, 'Insurance Company');
-    renderGenericSalesGrid('dpSupervisorGrid', salesSupervisorCurrentMonth, 'Supervisor');
+    renderDpControls();
+    renderGenericSalesGrid('dpLeasingGrid', monthlyCategoryData.leasing, 'Leasing / Metode');
+    renderGenericSalesGrid('dpInsuranceGrid', monthlyCategoryData.insurance, 'Insurance Company');
+    renderGenericSalesGrid('dpSupervisorGrid', monthlyCategoryData.supervisor, 'Supervisor');
   }
 
   /* ---------------- fetch: Published-to-Web CSV (confirmed reachable for this sheet) ---------------- */
@@ -1187,7 +1235,40 @@
     const monthLabelLong = `${MONTHS_ID_LONG[currentMonth]} ${currentYear}`;
     const asOf = `${MONTHS_ID[0]} – ${MONTHS_ID[currentMonth]} ${currentYear} (tahun berjalan)`;
 
-    return { penjualanData: newPenjualanData, monthLabels: newMonthLabels, monthlyByDivision: newMonthlyByDivision, salesLeasing: newSalesLeasing, salesInsurance: newSalesInsurance, salesSupervisor: newSalesSupervisor, monthLabelLong, asOf };
+    // last 6 calendar months up to (and including) the current month, for the
+    // Detail Penjualan range/month filter — handles year rollover (e.g. Nov,Des of
+    // the previous year when currentMonth is Jan/Feb).
+    const newMonthWindow = [];
+    for (let i = 5; i >= 0; i--) {
+      let mm = currentMonth - i, yy2 = currentYear;
+      while (mm < 0) { mm += 12; yy2 -= 1; }
+      newMonthWindow.push({ y: yy2, m: mm, key: `${yy2}-${mm}`, shortLabel: `${MONTHS_ID[mm]} ${String(yy2).slice(2)}`, longLabel: `${MONTHS_ID_LONG[mm]} ${yy2}` });
+    }
+
+    function categoryBreakdown(subRows, keyFn) {
+      const map = {};
+      subRows.forEach(r => { const k = keyFn(r); map[k] = (map[k] || 0) + 1; });
+      return Object.entries(map).map(([name, unit]) => ({ name, unit })).sort((a, b) => b.unit - a.unit);
+    }
+    const leasingKeyFn = r => (r.cara === 'Tunai' || !r.statusFnc) ? 'Cash (Tunai)' : r.statusFnc;
+    const insuranceKeyFn = r => (!r.asuransi || r.asuransi === '-') ? 'Non Asuransi' : r.asuransi;
+    const supervisorKeyFn = r => r.supervisor || '–';
+
+    const newMonthlyCategoryData = { leasing: {}, insurance: {}, supervisor: {} };
+    divOrder.forEach(name => {
+      const meta = BRANCH_META[name];
+      newMonthlyCategoryData.leasing[meta.key] = {};
+      newMonthlyCategoryData.insurance[meta.key] = {};
+      newMonthlyCategoryData.supervisor[meta.key] = {};
+      newMonthWindow.forEach(mw => {
+        const sub = rows.filter(r => r.divisi === name && r.tanggal.getFullYear() === mw.y && r.tanggal.getMonth() === mw.m);
+        newMonthlyCategoryData.leasing[meta.key][mw.key] = categoryBreakdown(sub, leasingKeyFn);
+        newMonthlyCategoryData.insurance[meta.key][mw.key] = categoryBreakdown(sub, insuranceKeyFn);
+        newMonthlyCategoryData.supervisor[meta.key][mw.key] = categoryBreakdown(sub, supervisorKeyFn);
+      });
+    });
+
+    return { penjualanData: newPenjualanData, monthLabels: newMonthLabels, monthlyByDivision: newMonthlyByDivision, salesLeasing: newSalesLeasing, salesInsurance: newSalesInsurance, salesSupervisor: newSalesSupervisor, monthLabelLong, asOf, monthWindow: newMonthWindow, monthlyCategoryData: newMonthlyCategoryData };
   }
 
   function setSalesSyncStatus(kind, text) {
@@ -1211,6 +1292,8 @@
       salesLeasingCurrentMonth = agg.salesLeasing;
       salesInsuranceCurrentMonth = agg.salesInsurance;
       salesSupervisorCurrentMonth = agg.salesSupervisor;
+      monthWindow = agg.monthWindow;
+      monthlyCategoryData = agg.monthlyCategoryData;
       LEASING_MONTH_LABEL = agg.monthLabelLong;
       PENJUALAN_ASOF = agg.asOf;
       renderPenjualanPerDivisi();
@@ -1880,6 +1963,11 @@
   renderDivisionCards(leasingBreakdown, computeBranchTotalsFromLeasing(leasingBreakdown));
   renderPenjualanPerDivisi();
   renderDetailPenjualan();
+  document.getElementById('dpRangeSelect').addEventListener('change', (e) => {
+    dpRange = Number(e.target.value);
+    dpSelectedMonth = 'all';
+    renderDetailPenjualan();
+  });
   renderPriorityTable(priority);
   renderRincianLeasing(null);
   renderFollowupTable([]);
