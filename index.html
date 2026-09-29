@@ -312,6 +312,11 @@
   .st-block .st-title { font-family: var(--serif); font-size: 15px; font-weight: 500; margin-bottom: 10px; }
   .st-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
   @media (max-width: 900px) { .st-cards { grid-template-columns: 1fr; } }
+  tr.st-row { cursor: pointer; }
+  tr.st-row:hover { background: var(--panel-2); }
+  tr.st-detail-row.hidden { display: none; }
+  tr.st-detail-row td { padding: 0 !important; }
+  .st-detail-wrap { margin: 2px 6px 10px; background: var(--bg-2); border-radius: 6px; overflow-x: auto; }
   .prio-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 18px 20px; background: var(--b4-bg); border-bottom: 1px solid #F0555A3D; }
   .prio-head .t { display: flex; align-items: center; gap: 10px; }
   .prio-head .t .flag { width: 9px; height: 9px; border-radius: 50%; background: var(--b4); box-shadow: 0 0 0 4px #F0555A22; }
@@ -468,6 +473,7 @@
       <table class="leasing-table">
         <thead>
           <tr>
+            <th style="text-align:right">No</th>
             <th>Leasing / Metode</th>
             <th class="lcol gatsu">Gatsu</th>
             <th class="lcol flamboyan">Flamboyan</th>
@@ -803,6 +809,7 @@
       tr.className = 'dlrow clickable';
       tr.dataset.detail = rid;
       tr.innerHTML = `
+        <td style="text-align:right">${li + 1}</td>
         <td><span class="dexp">▸</span><span class="leasing-name">${esc(l.name)}</span>${isCash ? '<span class="tag">langsung, tanpa leasing</span>' : ''}</td>
         ${branchCells}
         <td style="text-align:center">${l.count}</td>
@@ -816,8 +823,9 @@
         if (b && b.invoices) b.invoices.forEach(inv => allInvoices.push({ ...inv, cabang: BRANCH_DISPLAY[bk].label }));
       });
       allInvoices.sort((a, b) => b.hari - a.hari);
-      const detailRows = allInvoices.map(inv => `
+      const detailRows = allInvoices.map((inv, ii) => `
         <tr>
+          <td style="text-align:right">${ii + 1}</td>
           <td>${esc(inv.cabang)}</td>
           <td>${esc(inv.nama)}</td>
           <td class="jumlah-mono">${esc(inv.faktur)}</td>
@@ -827,10 +835,10 @@
       const detailTr = document.createElement('tr');
       detailTr.className = 'ddetail hidden';
       detailTr.dataset.detailrow = rid;
-      detailTr.innerHTML = `<td colspan="7">
+      detailTr.innerHTML = `<td colspan="8">
         <table class="detail-sub-table">
-          <thead><tr><th>Cabang</th><th>Debitur</th><th>Faktur</th><th style="text-align:right">Nominal</th><th style="text-align:right">Hari</th></tr></thead>
-          <tbody>${detailRows || '<tr><td colspan="5" style="padding-left:14px;color:var(--ink-faint)">Tidak ada faktur</td></tr>'}</tbody>
+          <thead><tr><th style="text-align:right">No</th><th>Cabang</th><th>Debitur</th><th>Faktur</th><th style="text-align:right">Nominal</th><th style="text-align:right">Hari</th></tr></thead>
+          <tbody>${detailRows || '<tr><td colspan="6" style="padding-left:14px;color:var(--ink-faint)">Tidak ada faktur</td></tr>'}</tbody>
         </table>
       </td>`;
       leasingBody.appendChild(detailTr);
@@ -859,6 +867,7 @@
     });
     const footBranchCells = BRANCH_KEYS.map(bk => `<td style="text-align:center; font-family:var(--mono)">${fmtRp(totals[bk].s)}</td>`).join('');
     leasingFoot.innerHTML = `<tr>
+      <td></td>
       <td>Total</td>
       ${footBranchCells}
       <td style="text-align:center">${totCount}</td>
@@ -892,23 +901,25 @@
         const pct = bt.sum ? (sum / bt.sum * 100) : 0;
         const rid = `${bk}-${li}`;
         const invoices = (b && b.invoices) || [];
-        const detailRows = invoices.slice().sort((a,c) => c.hari - a.hari).map(inv => `
+        const detailRows = invoices.slice().sort((a,c) => c.hari - a.hari).map((inv, ii) => `
           <tr>
+            <td style="text-align:right">${ii + 1}</td>
             <td>${esc(inv.nama)}</td>
             <td class="jumlah-mono">${esc(inv.faktur)}</td>
             <td class="dnum">${fmtRp(inv.jumlah)}</td>
             <td class="dnum">${inv.hari} hr</td>
           </tr>`).join('');
         const mainRow = `<tr class="dlrow ${count ? 'clickable' : ''}" data-detail="${rid}">
+          <td style="text-align:right">${li + 1}</td>
           <td>${count ? '<span class="dexp">▸</span>' : ''}${esc(l.name)}</td>
           <td class="dnum ${!count?'zero':''}">${count || '–'}</td>
           <td class="dnum ${!sum?'zero':''}">${sum ? fmtRp(sum) : '–'}</td>
           <td class="dnum ${!sum?'zero':''}">${sum ? pct.toFixed(1)+'%' : '–'}</td>
         </tr>`;
         const detailRow = count ? `<tr class="ddetail hidden" data-detailrow="${rid}">
-          <td colspan="4">
+          <td colspan="5">
             <table class="detail-sub-table">
-              <thead><tr><th>Debitur</th><th>Faktur</th><th style="text-align:right">Nominal</th><th style="text-align:right">Hari</th></tr></thead>
+              <thead><tr><th style="text-align:right">No</th><th>Debitur</th><th>Faktur</th><th style="text-align:right">Nominal</th><th style="text-align:right">Hari</th></tr></thead>
               <tbody>${detailRows}</tbody>
             </table>
           </td>
@@ -918,14 +929,14 @@
 
       card.innerHTML = `
         <div class="dhead">
-          <div class="dname">${bidx + 1}. ${meta.label}</div>
+          <div class="dname">${meta.label}</div>
           <div class="dtotal">${fmtRp(bt.sum)}</div>
           <div class="dcount">${bt.count} faktur</div>
         </div>
         <table class="division-table">
-          <thead><tr><th>Leasing</th><th style="text-align:right">Faktur</th><th style="text-align:right">Nilai</th><th style="text-align:right">%</th></tr></thead>
+          <thead><tr><th style="text-align:right">No</th><th>Leasing</th><th style="text-align:right">Faktur</th><th style="text-align:right">Nilai</th><th style="text-align:right">%</th></tr></thead>
           <tbody>${rowsHtml}
-            <tr class="dtotal-row"><td>Total</td><td class="dnum">${bt.count}</td><td class="dnum">${fmtRp(bt.sum)}</td><td class="dnum">100.0%</td></tr>
+            <tr class="dtotal-row"><td></td><td>Total</td><td class="dnum">${bt.count}</td><td class="dnum">${fmtRp(bt.sum)}</td><td class="dnum">100.0%</td></tr>
           </tbody>
         </table>`;
       card.querySelectorAll('tr.dlrow.clickable').forEach(tr => {
@@ -1283,6 +1294,67 @@
   let stSelectedMonth = 'all';
   let stTopN = 10;
 
+  let stDetailSort = { key: 'nama', dir: 'asc' };
+  let stOpenCard = null; // {cardId, salesman}
+
+  function stTransactionsFor(divisiName, mw, salesmanName) {
+    return allSalesRows.filter(r => r.divisi === divisiName && r.tanggal.getFullYear() === mw.y && r.tanggal.getMonth() === mw.m && (cleanSalesmanFull(r.salesman) || '–') === salesmanName);
+  }
+
+  function stSortRows(rows) {
+    const key = stDetailSort.key, dir = stDetailSort.dir === 'asc' ? 1 : -1;
+    const leasingOf = r => (r.cara === 'Tunai' || !r.statusFnc) ? 'Cash (Tunai)' : r.statusFnc;
+    return rows.slice().sort((a, b) => {
+      let va, vb;
+      if (key === 'nama') { va = a.nama; vb = b.nama; }
+      else if (key === 'type') { va = a.type; vb = b.type; }
+      else if (key === 'faktur') { va = a.faktur; vb = b.faktur; }
+      else if (key === 'leasing') { va = leasingOf(a); vb = leasingOf(b); }
+      else if (key === 'tanggal') { return (a.tanggal - b.tanggal) * dir; }
+      else { va = a.divisi; vb = b.divisi; }
+      return String(va || '').localeCompare(String(vb || '')) * dir;
+    });
+  }
+
+  function stRenderDetailTable(divisiName, mw, salesmanName) {
+    const leasingOf = r => (r.cara === 'Tunai' || !r.statusFnc) ? 'Cash (Tunai)' : r.statusFnc;
+    const rows = stSortRows(stTransactionsFor(divisiName, mw, salesmanName));
+    const cols = [
+      { key: 'nama', label: 'Nama Debitur' },
+      { key: 'type', label: 'Tipe Unit' },
+      { key: 'faktur', label: 'Faktur' },
+      { key: 'leasing', label: 'Leasing' },
+      { key: 'tanggal', label: 'Tanggal' },
+      { key: 'divisi', label: 'Cabang' },
+    ];
+    const headHtml = cols.map(c => {
+      const arrow = stDetailSort.key === c.key ? `<span class="sort-arrow">${stDetailSort.dir === 'asc' ? '▲' : '▼'}</span>` : '';
+      return `<th class="bdp-sortable" data-sort="${c.key}">${c.label}${arrow}</th>`;
+    }).join('');
+    const bodyHtml = rows.map((r, i) => `<tr>
+      <td style="text-align:right">${i + 1}</td>
+      <td>${esc(r.nama)}</td>
+      <td>${esc(r.type)}</td>
+      <td class="jumlah-mono">${esc(r.faktur)}</td>
+      <td>${esc(leasingOf(r))}</td>
+      <td>${r.tanggal.toLocaleDateString('id-ID')}</td>
+      <td>${esc(r.divisi)}</td>
+    </tr>`).join('');
+    return `<table class="bdp-table"><thead><tr><th style="text-align:right">No</th>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>`;
+  }
+
+  function stWireDetailSort(container, divisiName, mw, salesmanName) {
+    container.querySelectorAll('th.bdp-sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const k = th.dataset.sort;
+        if (stDetailSort.key === k) stDetailSort.dir = stDetailSort.dir === 'asc' ? 'desc' : 'asc';
+        else { stDetailSort.key = k; stDetailSort.dir = 'asc'; }
+        container.innerHTML = stRenderDetailTable(divisiName, mw, salesmanName);
+        stWireDetailSort(container, divisiName, mw, salesmanName);
+      });
+    });
+  }
+
   function renderSalesTerbanyak() {
     const stTab = document.getElementById('stMonthPills');
     if (!stTab) return;
@@ -1292,7 +1364,7 @@
     const pills = [{ key: 'all', label: 'Semua' }, ...visibleMonths.map(mw => ({ key: mw.key, label: mw.shortLabel }))];
     pillsEl.innerHTML = pills.map(p => `<button class="dp-pill ${stSelectedMonth===p.key?'active':''}" data-month="${esc(p.key)}">${esc(p.label)}</button>`).join('');
     pillsEl.querySelectorAll('.dp-pill').forEach(btn => {
-      btn.addEventListener('click', () => { stSelectedMonth = btn.dataset.month; renderSalesTerbanyak(); });
+      btn.addEventListener('click', () => { stSelectedMonth = btn.dataset.month; stOpenCard = null; renderSalesTerbanyak(); });
     });
 
     const topnEl = document.getElementById('stTopNPills');
@@ -1308,17 +1380,22 @@
 
     const grid = document.getElementById('stGrid');
     grid.innerHTML = penjualanData.map(d => {
-      const cardsHtml = monthsToShow.map(mw => {
+      const cardsHtml = monthsToShow.map((mw, mi) => {
+        const cardId = `${d.key}__${mw.key}`;
         const sub = allSalesRows.filter(r => r.divisi === d.name && r.tanggal.getFullYear() === mw.y && r.tanggal.getMonth() === mw.m);
         const map = {};
         sub.forEach(r => { const k = cleanSalesmanFull(r.salesman) || '–'; map[k] = (map[k] || 0) + 1; });
         let list = Object.entries(map).map(([name, unit]) => ({ name, unit })).sort((a, b) => b.unit - a.unit);
         if (stTopN !== 'all') list = list.slice(0, stTopN);
-        const rowsHtml = list.map(l => `<tr><td>${esc(l.name)}</td><td class="slnum">${l.unit}</td></tr>`).join('');
+        const rowsHtml = list.map((l, i) => {
+          const isOpenRow = stOpenCard && stOpenCard.cardId === cardId && stOpenCard.salesman === l.name;
+          return `<tr class="st-row" data-cardid="${esc(cardId)}" data-salesman="${esc(l.name)}"><td style="text-align:right">${i+1}</td><td><span class="dexp">${isOpenRow?'▾':'▸'}</span>${esc(l.name)}</td><td class="slnum">${l.unit}</td></tr>
+          <tr class="st-detail-row ${isOpenRow?'':'hidden'}" data-carddetail="${esc(cardId)}" data-salesmandetail="${esc(l.name)}"><td colspan="3" style="padding:0">${isOpenRow ? `<div class="st-detail-wrap">${stRenderDetailTable(d.name, mw, l.name)}</div>` : ''}</td></tr>`;
+        }).join('');
         return `<div class="sl-card" style="--accent:${d.color}">
           <div class="slhead"><div class="slname">${esc(d.name)}</div><div class="sltotal">${sub.length} unit · ${esc(mw.longLabel)}</div></div>
-          <table class="sl-table"><thead><tr><th>Salesman</th><th style="text-align:right">Unit</th></tr></thead>
-          <tbody>${rowsHtml || '<tr><td colspan="2" style="color:var(--ink-faint)">Belum ada data</td></tr>'}</tbody></table>
+          <table class="sl-table"><thead><tr><th style="text-align:right">No</th><th>Salesman</th><th style="text-align:right">Unit</th></tr></thead>
+          <tbody>${rowsHtml || '<tr><td colspan="3" style="color:var(--ink-faint)">Belum ada data</td></tr>'}</tbody></table>
         </div>`;
       }).join('');
       return `<div class="st-block">
@@ -1326,6 +1403,33 @@
         <div class="st-cards">${cardsHtml}</div>
       </div>`;
     }).join('');
+
+    if (stOpenCard) {
+      const wrap = grid.querySelector(`.st-detail-wrap`);
+      if (wrap) {
+        const [dkey, monthKey] = stOpenCard.cardId.split('__');
+        const dName = (penjualanData.find(d => d.key === dkey) || {}).name;
+        const mwFound = monthWindow.find(m => m.key === monthKey);
+        if (dName && mwFound) stWireDetailSort(wrap, dName, mwFound, stOpenCard.salesman);
+      }
+    }
+  }
+
+  let stGridWired = false;
+  function wireSalesTerbanyakDelegation() {
+    if (stGridWired) return;
+    stGridWired = true;
+    document.getElementById('stGrid').addEventListener('click', (e) => {
+      const tr = e.target.closest('tr.st-row');
+      if (!tr) return;
+      const cardId = tr.dataset.cardid, salesman = tr.dataset.salesman;
+      if (stOpenCard && stOpenCard.cardId === cardId && stOpenCard.salesman === salesman) {
+        stOpenCard = null;
+      } else {
+        stOpenCard = { cardId, salesman };
+      }
+      renderSalesTerbanyak();
+    });
   }
 
   const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8rWnYng7TGqvAMl7aryX7yZE7hQnzwF3Urqwu1t8bPq9AFJBXPfqaGmUzTk08Nw91e6mQGV6kbc2J/pub?gid=860325626&single=true&output=csv';
@@ -2325,6 +2429,13 @@
   document.getElementById('dpExportPdf').addEventListener('click', () => {
     exportToPdf('Kartu_Ringkasan_Divisi.pdf', 'Kartu Ringkasan Divisi', gatherKrdExportSheets());
   });
+  document.getElementById('stRangeSelect').addEventListener('change', (e) => {
+    stRange = Number(e.target.value);
+    stSelectedMonth = 'all';
+    stOpenCard = null;
+    renderSalesTerbanyak();
+  });
+  wireSalesTerbanyakDelegation();
   renderPriorityTable(priority);
   renderRincianLeasing(null);
   renderFollowupTable([]);
