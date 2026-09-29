@@ -562,6 +562,10 @@
       </select>
       <div class="dp-pills" id="stMonthPills"></div>
       <div class="dp-pills" id="stTopNPills"></div>
+      <div class="dp-export">
+        <button id="stExportPdf" class="dp-export-btn">⭳ Export PDF</button>
+        <button id="stExportExcel" class="dp-export-btn">⭳ Export Excel</button>
+      </div>
     </div>
     <div id="stGrid"></div>
   </div>
@@ -1073,16 +1077,16 @@
         const byMonth = categoryDataByBranchMonth[d.key] || {};
         const list = byMonth[mw.key] || [];
         const total = list.reduce((s,l) => s + l.unit, 0);
-        const rows = list.map(l => `<tr><td>${esc(l.name)}</td><td class="slnum">${l.unit}</td></tr>`).join('');
+        const rows = list.map((l, li) => `<tr><td style="text-align:right">${li+1}</td><td>${esc(l.name)}</td><td class="slnum">${l.unit}</td></tr>`).join('');
         cardsHtml += `<div class="sl-card" style="--accent:${d.color}">
           <div class="slhead">
             <div class="slname">${esc(d.name)}</div>
             <div class="sltotal">${total} unit · ${esc(mw.longLabel)}</div>
           </div>
           <table class="sl-table">
-            <thead><tr><th>${esc(colLabel)}</th><th style="text-align:right">Unit</th></tr></thead>
-            <tbody>${rows || `<tr><td colspan="2" style="color:var(--ink-faint)">Belum ada data</td></tr>`}
-              <tr><td style="font-weight:700">Total</td><td class="slnum" style="font-weight:700">${total}</td></tr>
+            <thead><tr><th style="text-align:right">No</th><th>${esc(colLabel)}</th><th style="text-align:right">Unit</th></tr></thead>
+            <tbody>${rows || `<tr><td colspan="3" style="color:var(--ink-faint)">Belum ada data</td></tr>`}
+              <tr><td></td><td style="font-weight:700">Total</td><td class="slnum" style="font-weight:700">${total}</td></tr>
             </tbody>
           </table>
         </div>`;
@@ -1413,6 +1417,23 @@
         if (dName && mwFound) stWireDetailSort(wrap, dName, mwFound, stOpenCard.salesman);
       }
     }
+  }
+
+  function gatherStExportSheets() {
+    const visibleMonths = monthWindow.slice(-stRange);
+    const monthsToShow = stSelectedMonth === 'all' ? visibleMonths : visibleMonths.filter(m => m.key === stSelectedMonth);
+    return penjualanData.map(d => {
+      const rows = [];
+      monthsToShow.forEach(mw => {
+        const sub = allSalesRows.filter(r => r.divisi === d.name && r.tanggal.getFullYear() === mw.y && r.tanggal.getMonth() === mw.m);
+        const map = {};
+        sub.forEach(r => { const k = cleanSalesmanFull(r.salesman) || '–'; map[k] = (map[k] || 0) + 1; });
+        let list = Object.entries(map).map(([name, unit]) => ({ name, unit })).sort((a, b) => b.unit - a.unit);
+        if (stTopN !== 'all') list = list.slice(0, stTopN);
+        list.forEach((l, i) => rows.push([i + 1, mw.longLabel, l.name, l.unit]));
+      });
+      return { name: d.name, headers: ['No', 'Bulan', 'Salesman', 'Unit'], rows };
+    });
   }
 
   let stGridWired = false;
@@ -2436,6 +2457,13 @@
     renderSalesTerbanyak();
   });
   wireSalesTerbanyakDelegation();
+  document.getElementById('stExportExcel').addEventListener('click', () => {
+    exportToExcel('Sales_Terbanyak.xlsx', gatherStExportSheets());
+  });
+  document.getElementById('stExportPdf').addEventListener('click', () => {
+    exportToPdf('Sales_Terbanyak.pdf', 'Sales Terbanyak', gatherStExportSheets());
+  });
+  wireDetailPenjualanV2();
   renderPriorityTable(priority);
   renderRincianLeasing(null);
   renderFollowupTable([]);
