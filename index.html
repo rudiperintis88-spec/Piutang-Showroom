@@ -158,6 +158,7 @@
   .tabbtn.active { color: var(--ink); border-bottom-color: var(--accent2); }
   .tabpane.hidden { display: none; }
   #priorityBlock.hidden { display: none; }
+  #generalTasksBlock.hidden { display: none; }
 
   /* per-division detail tables */
   .division-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -641,21 +642,23 @@
   </div>
 
   <!-- GENERAL TASKS -->
-  <div class="stitle"><h2>Tugas Tim Penagihan</h2><span>tidak terikat faktur tertentu</span></div>
-  <div class="taskpanel">
-    <div class="taskpanel-head">
-      <div class="tp-filters" id="tpFilters">
-        <button data-f="all" class="active">Semua</button>
-        <button data-f="todo">Belum selesai</button>
-        <button data-f="done">Selesai</button>
+  <div id="generalTasksBlock">
+    <div class="stitle"><h2>Tugas Tim Penagihan</h2><span>tidak terikat faktur tertentu</span></div>
+    <div class="taskpanel">
+      <div class="taskpanel-head">
+        <div class="tp-filters" id="tpFilters">
+          <button data-f="all" class="active">Semua</button>
+          <button data-f="todo">Belum selesai</button>
+          <button data-f="done">Selesai</button>
+        </div>
       </div>
+      <form class="gtask-form" id="gtaskForm">
+        <input class="gtitle" type="text" placeholder="Tugas baru… (mis. rekap ulang aging mingguan)" required>
+        <input class="gassignee" type="text" placeholder="PIC (opsional)">
+        <button type="submit">+ Tambah</button>
+      </form>
+      <div class="gtask-list" id="gtaskList"><div class="task-empty">Memuat tugas…</div></div>
     </div>
-    <form class="gtask-form" id="gtaskForm">
-      <input class="gtitle" type="text" placeholder="Tugas baru… (mis. rekap ulang aging mingguan)" required>
-      <input class="gassignee" type="text" placeholder="PIC (opsional)">
-      <button type="submit">+ Tambah</button>
-    </form>
-    <div class="gtask-list" id="gtaskList"><div class="task-empty">Memuat tugas…</div></div>
   </div>
 
   <footer>
@@ -1211,6 +1214,22 @@
     return rows;
   }
 
+  let dp2DetailSort = { key: 'tanggal', dir: 'asc' };
+
+  function dp2SortRows(rows) {
+    const key = dp2DetailSort.key, dir = dp2DetailSort.dir === 'asc' ? 1 : -1;
+    return rows.slice().sort((a, b) => {
+      if (key === 'tanggal') return (a.tanggal - b.tanggal) * dir;
+      let va, vb;
+      if (key === 'nama') { va = a.nama; vb = b.nama; }
+      else if (key === 'type') { va = a.type; vb = b.type; }
+      else if (key === 'faktur') { va = a.faktur; vb = b.faktur; }
+      else if (key === 'divisi') { va = a.divisi; vb = b.divisi; }
+      else { va = cleanSalesmanFull(a.salesman); vb = cleanSalesmanFull(b.salesman); }
+      return String(va || '').localeCompare(String(vb || '')) * dir;
+    });
+  }
+
   function renderDetailPenjualanV2() {
     populateDp2Selectors();
     const keyFn = dp2KeyFn(dp2State.groupBy);
@@ -1230,11 +1249,24 @@
       container.innerHTML = '<div class="task-empty">Tidak ada data yang cocok.</div>';
       return;
     }
+    const dp2Cols = [
+      { key: 'nama', label: 'Nama Debitur' },
+      { key: 'type', label: 'Tipe Unit' },
+      { key: 'faktur', label: 'Faktur' },
+      { key: 'tanggal', label: 'Tanggal' },
+      { key: 'divisi', label: 'Cabang' },
+      { key: 'salesman', label: 'Salesman' },
+    ];
+    const dp2HeadHtml = dp2Cols.map(c => {
+      const arrow = dp2DetailSort.key === c.key ? `<span class="sort-arrow">${dp2DetailSort.dir === 'asc' ? '▲' : '▼'}</span>` : '';
+      return `<th class="bdp-sortable" data-sort="${c.key}">${c.label}${arrow}</th>`;
+    }).join('');
     container.innerHTML = groupNames.map((gname, gi) => {
       const list = groups[gname];
       const isOpen = !dp2State.collapsed.has(gname);
-      const detailRows = list.slice().sort((a, b) => b.tanggal - a.tanggal).map(r => `
+      const detailRows = dp2SortRows(list).map((r, i) => `
         <tr>
+          <td style="text-align:right">${i + 1}</td>
           <td>${esc(r.nama)}</td>
           <td>${esc(r.type)}</td>
           <td class="jumlah-mono">${esc(r.faktur)}</td>
@@ -1246,11 +1278,20 @@
         <div class="dp2-group-bar ${isOpen ? 'open' : ''}" data-groupidx="${gi}"><span><span class="chevron">▸</span>${esc(gname)}</span><span>${list.length} unit</span></div>
         <div class="dp2-group-detail ${isOpen ? '' : 'hidden'}" data-groupdetailidx="${gi}">
           <table class="dp2-table">
-            <thead><tr><th>Nama Debitur</th><th>Tipe Unit</th><th>Faktur</th><th>Tanggal</th><th>Cabang</th><th>Salesman</th></tr></thead>
+            <thead><tr><th style="text-align:right">No</th>${dp2HeadHtml}</tr></thead>
             <tbody>${detailRows}</tbody>
           </table>
         </div>`;
     }).join('');
+
+    container.querySelectorAll('th.bdp-sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const k = th.dataset.sort;
+        if (dp2DetailSort.key === k) dp2DetailSort.dir = dp2DetailSort.dir === 'asc' ? 'desc' : 'asc';
+        else { dp2DetailSort.key = k; dp2DetailSort.dir = 'asc'; }
+        renderDetailPenjualanV2();
+      });
+    });
 
     container.querySelectorAll('.dp2-group-bar').forEach((bar, gi) => {
       bar.addEventListener('click', () => {
@@ -1266,12 +1307,12 @@
 
   function gatherDp2ExportSheet() {
     const keyFn = dp2KeyFn(dp2State.groupBy);
-    const rows = getDp2FilteredRows().slice().sort((a, b) => b.tanggal - a.tanggal);
+    const rows = getDp2FilteredRows().slice().sort((a, b) => a.tanggal - b.tanggal);
     const groupLabel = { leasing: 'Leasing', insurance: 'Insurance Company', supervisor: 'Supervisor', salesman: 'Salesman' }[dp2State.groupBy];
     return [{
       name: 'Detail Penjualan',
-      headers: [groupLabel, 'Nama Debitur', 'Tipe Unit', 'Faktur', 'Tanggal', 'Cabang', 'Salesman'],
-      rows: rows.map(r => [keyFn(r), r.nama, r.type, r.faktur, r.tanggal.toLocaleDateString('id-ID'), r.divisi, cleanSalesmanFull(r.salesman)]),
+      headers: ['No', groupLabel, 'Nama Debitur', 'Tipe Unit', 'Faktur', 'Tanggal', 'Cabang', 'Salesman'],
+      rows: rows.map((r, i) => [i + 1, keyFn(r), r.nama, r.type, r.faktur, r.tanggal.toLocaleDateString('id-ID'), r.divisi, cleanSalesmanFull(r.salesman)]),
     }];
   }
 
@@ -1737,18 +1778,21 @@
     const tabs = document.querySelectorAll('#mainTabs .tabbtn');
     const panes = { cabang: document.getElementById('tab-cabang'), ringkasan: document.getElementById('tab-ringkasan'), perdivisi: document.getElementById('tab-perdivisi'), penjualan: document.getElementById('tab-penjualan'), detailpenjualan: document.getElementById('tab-detailpenjualan'), rincian: document.getElementById('tab-rincian'), followup: document.getElementById('tab-followup'), salesterbanyak: document.getElementById('tab-salesterbanyak') };
     const priorityBlock = document.getElementById('priorityBlock');
-    const PRIORITY_VISIBLE_TABS = ['cabang', 'followup'];
-    function updatePriorityVisibility(tabKey) {
-      if (priorityBlock) priorityBlock.classList.toggle('hidden', !PRIORITY_VISIBLE_TABS.includes(tabKey));
+    const generalTasksBlock = document.getElementById('generalTasksBlock');
+    const SIDEBAR_VISIBLE_TABS = ['cabang', 'followup'];
+    function updateSidebarVisibility(tabKey) {
+      const shouldShow = SIDEBAR_VISIBLE_TABS.includes(tabKey);
+      if (priorityBlock) priorityBlock.classList.toggle('hidden', !shouldShow);
+      if (generalTasksBlock) generalTasksBlock.classList.toggle('hidden', !shouldShow);
     }
     tabs.forEach(btn => {
       btn.addEventListener('click', () => {
         tabs.forEach(b => b.classList.toggle('active', b === btn));
         Object.keys(panes).forEach(key => panes[key].classList.toggle('hidden', key !== btn.dataset.tab));
-        updatePriorityVisibility(btn.dataset.tab);
+        updateSidebarVisibility(btn.dataset.tab);
       });
     });
-    updatePriorityVisibility('cabang');
+    updateSidebarVisibility('cabang');
   }
 
 
