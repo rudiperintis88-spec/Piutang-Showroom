@@ -547,6 +547,10 @@
       <button id="dp2MinAll" class="dp-export-btn">Minimize semua</button>
       <button id="dp2OpenAll" class="dp-export-btn">Buka semua</button>
       <div class="dp-export">
+        <select id="dp2ExportOrderSelect" class="dp-range-select">
+          <option value="az">Urutan kategori: A-Z</option>
+          <option value="top">Urutan kategori: Terbanyak di atas</option>
+        </select>
         <button id="dp2ExportPdf" class="dp-export-btn">⭳ Export PDF</button>
         <button id="dp2ExportExcel" class="dp-export-btn">⭳ Export Excel</button>
       </div>
@@ -1140,21 +1144,37 @@
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     return `${dd}/${mm}/${d.getFullYear()}`;
   }
+  // Acuan format angka untuk SEMUA laporan yang di-export: pemisah ribuan pakai
+  // titik (mis. 1.000.000), tanpa "Rp" supaya tetap bisa dijumlah manual di Excel.
+  function fmtNumExport(n) {
+    return Math.round(n || 0).toLocaleString('id-ID');
+  }
 
   // Mesin export bersama: tiap "sheet" berisi beberapa GRUP (mis. per Leasing:
-  // ACC, TAF, dst). Tiap grup mendapat baris judul sendiri + header kolom
-  // berulang, supaya jelas terpisah — bukan satu tabel panjang yang menyatu.
+  // ACC, TAF, dst), opsional dikelompokkan lagi jadi SECTION (mis. per Divisi)
+  // di atasnya. Tiap grup mendapat baris judul sendiri + header kolom berulang
+  // + baris Total di bawahnya — supaya jelas terpisah, bukan satu tabel panjang.
   function exportToExcel(filename, sheets) {
     if (typeof XLSX === 'undefined') { alert('Library Excel belum termuat — pastikan koneksi internet aktif, lalu coba lagi.'); return; }
     const wb = XLSX.utils.book_new();
     sheets.forEach(s => {
       const matrix = [];
-      s.groups.forEach(g => {
+      const emitGroup = (g) => {
         if (g.title) matrix.push([g.title]);
         matrix.push(g.headers);
         g.rows.forEach(r => matrix.push(r));
+        if (g.totalRow) matrix.push(g.totalRow);
         matrix.push([]);
-      });
+      };
+      if (s.sections) {
+        s.sections.forEach(sec => {
+          matrix.push([sec.title]);
+          matrix.push([]);
+          sec.groups.forEach(emitGroup);
+        });
+      } else {
+        s.groups.forEach(emitGroup);
+      }
       const ws = XLSX.utils.aoa_to_sheet(matrix);
       XLSX.utils.book_append_sheet(wb, ws, String(s.name).slice(0, 31));
     });
@@ -1168,9 +1188,9 @@
     sheets.forEach((s, si) => {
       if (si > 0) doc.addPage();
       doc.setFontSize(13);
-      doc.text(`${title} — ${s.name}`, 14, 15);
+      doc.text(String(s.name || title), 14, 15);
       let y = 22;
-      s.groups.forEach(g => {
+      const emitGroup = (g) => {
         if (g.title) {
           doc.setFontSize(10.5);
           doc.setFont(undefined, 'bold');
@@ -1178,9 +1198,22 @@
           doc.setFont(undefined, 'normal');
           y += 4;
         }
-        doc.autoTable({ head: [g.headers], body: g.rows, startY: y, styles: { fontSize: 7.5 } });
+        const body = g.totalRow ? [...g.rows, g.totalRow] : g.rows;
+        doc.autoTable({ head: [g.headers], body, startY: y, styles: { fontSize: 7.5 } });
         y = doc.lastAutoTable.finalY + 8;
-      });
+      };
+      if (s.sections) {
+        s.sections.forEach(sec => {
+          doc.setFontSize(12.5);
+          doc.setFont(undefined, 'bold');
+          doc.text(sec.title, 14, y);
+          doc.setFont(undefined, 'normal');
+          y += 7;
+          sec.groups.forEach(emitGroup);
+        });
+      } else {
+        s.groups.forEach(emitGroup);
+      }
     });
     doc.save(filename);
   }
@@ -1195,10 +1228,12 @@
       penjualanData.forEach(d => {
         monthsToShow.forEach(mw => {
           const list = (dataByBranchMonth[d.key] && dataByBranchMonth[d.key][mw.key]) || [];
+          const totalUnit = list.reduce((s, l) => s + l.unit, 0);
           groups.push({
             title: `${d.name} — ${mw.longLabel}`,
             headers: ['No', name, 'Unit'],
             rows: list.map((l, i) => [i + 1, l.name, l.unit]),
+            totalRow: ['', `TOTAL (${list.length} kategori)`, totalUnit],
           });
         });
       });
@@ -1213,6 +1248,7 @@
 
   /* ---------------- Detail Penjualan v2: search + group-by + collapsible ---------------- */
   let dp2State = { search: '', divisi: 'all', monthKey: null, groupBy: 'leasing', collapsed: new Set() };
+  let dp2ExportOrder = 'az'; // 'az' atau 'top' (kategori terbanyak di atas) — khusus urutan kategori saat export
 
   function dp2KeyFn(groupBy) {
     if (groupBy === 'leasing') return r => (r.cara === 'Tunai' || !r.statusFnc) ? 'Cash (Tunai)' : r.statusFnc;
@@ -1389,24 +1425,34 @@
 
   function gatherDp2ExportSheet() {
     const keyFn = dp2KeyFn(dp2State.groupBy);
-    // Export selalu memakai acuan urutan baku sesuai jenis laporan yang ditarik
-    // (Leasing/Insurance/Supervisor/Salesman → Supervisor/Leasing → Tgl Faktur → Divisi),
-    // terlepas dari sort kolom yang sedang aktif di layar. Tiap kategori (ACC, TAF, dst)
-    // jadi grup terpisah dengan judul + header sendiri, No reset mulai dari 1 tiap grup.
-    const rows = dp2ReferenceSort(getDp2FilteredRows(), dp2State.groupBy);
     const groupLabel = { leasing: 'Leasing', insurance: 'Insurance Company', supervisor: 'Supervisor', salesman: 'Salesman' }[dp2State.groupBy];
-    const colHeaders = ['No', 'Nama Debitur', 'Tipe Unit', 'Faktur', 'Tanggal', 'Cabang', 'Salesman'];
-    const groups = [];
-    let current = null;
-    rows.forEach(r => {
-      const k = keyFn(r);
-      if (!current || current.key !== k) {
-        current = { key: k, title: `${groupLabel}: ${k}`, headers: colHeaders, rows: [] };
-        groups.push(current);
-      }
-      current.rows.push([current.rows.length + 1, r.nama, r.type, r.faktur, fmtDateExport(r.tanggal), r.divisi, cleanSalesmanFull(r.salesman)]);
+    // Cabang tidak diulang sebagai kolom karena sudah jadi judul section (per divisi).
+    const colHeaders = ['No', 'Nama Debitur', 'Tipe Unit', 'Faktur', 'Tanggal', 'Salesman'];
+    const allRows = getDp2FilteredRows();
+    const sections = [];
+    BRANCH_ORDER.forEach(divName => {
+      const divRows = dp2ReferenceSort(allRows.filter(r => r.divisi === divName), dp2State.groupBy);
+      if (!divRows.length) return;
+      const catMap = {};
+      divRows.forEach(r => { const k = keyFn(r); (catMap[k] ||= []).push(r); });
+      // Urutan kategori bisa dipilih user: A-Z, atau kategori dengan unit terbanyak di atas.
+      let catKeys = Object.keys(catMap);
+      if (dp2ExportOrder === 'top') catKeys.sort((a, b) => catMap[b].length - catMap[a].length);
+      else catKeys.sort((a, b) => a.localeCompare(b));
+      const groups = catKeys.map(k => {
+        const glist = catMap[k];
+        const totalRow = new Array(colHeaders.length).fill('');
+        totalRow[1] = `TOTAL (${glist.length} unit)`;
+        return {
+          title: `${groupLabel}: ${k}`,
+          headers: colHeaders,
+          rows: glist.map((r, i) => [i + 1, r.nama, r.type, r.faktur, fmtDateExport(r.tanggal), cleanSalesmanFull(r.salesman)]),
+          totalRow,
+        };
+      });
+      sections.push({ title: divName, groups });
     });
-    return [{ name: 'Detail Penjualan', groups }];
+    return [{ name: 'Detail Penjualan', sections }];
   }
 
   function wireDetailPenjualanV2() {
@@ -1422,6 +1468,7 @@
       renderDetailPenjualanV2();
     });
     document.getElementById('dp2OpenAll').addEventListener('click', () => { dp2State.collapsed.clear(); renderDetailPenjualanV2(); });
+    document.getElementById('dp2ExportOrderSelect').addEventListener('change', (e) => { dp2ExportOrder = e.target.value; });
     document.getElementById('dp2ExportExcel').addEventListener('click', () => exportToExcel('Detail_Penjualan.xlsx', gatherDp2ExportSheet()));
     document.getElementById('dp2ExportPdf').addEventListener('click', () => exportToPdf('Detail_Penjualan.pdf', 'Detail Penjualan', gatherDp2ExportSheet()));
   }
@@ -1563,10 +1610,12 @@
         sub.forEach(r => { const k = cleanSalesmanFull(r.salesman) || '–'; map[k] = (map[k] || 0) + 1; });
         let list = Object.entries(map).map(([name, unit]) => ({ name, unit })).sort((a, b) => b.unit - a.unit);
         if (stTopN !== 'all') list = list.slice(0, stTopN);
+        const totalUnit = list.reduce((s, l) => s + l.unit, 0);
         return {
           title: mw.longLabel,
           headers: ['No', 'Salesman', 'Unit'],
           rows: list.map((l, i) => [i + 1, l.name, l.unit]),
+          totalRow: ['', `TOTAL (${list.length} salesman)`, totalUnit],
         };
       });
       return { name: d.name, groups };
@@ -2442,10 +2491,14 @@
       groupKeys.forEach(key => {
         // Acuan: dikelompokkan Cabang → Leasing, dalam grup diurutkan umur piutang (Hari) tertinggi.
         const glist = sub.filter(r => leasingKeyOf(r) === key).slice().sort((a, b) => b.hari - a.hari);
+        const totalRow = new Array(colHeaders.length).fill('');
+        totalRow[1] = `TOTAL (${glist.length} unit)`;
+        totalRow[4] = fmtNumExport(groupTotals[key]);
         groups.push({
           title: `${name} — ${key}`,
           headers: colHeaders,
-          rows: glist.map((r, i) => [i + 1, r.nama, r.faktur, r.tglJtoDisplay, r.jumlah, r.giro || '-', r.type || '-', cleanSalesmanFull(r.salesman), r.supervisor || '-', r.hari]),
+          rows: glist.map((r, i) => [i + 1, r.nama, r.faktur, r.tglJtoDisplay, fmtNumExport(r.jumlah), r.giro || '-', r.type || '-', cleanSalesmanFull(r.salesman), r.supervisor || '-', r.hari]),
+          totalRow,
         });
       });
     });
@@ -2512,11 +2565,19 @@
       }
       const belum = isBelumTagih(r);
       current.rows.push([
-        current.rows.length + 1, r.nama, r.tglJtoDisplay, r.divisi, r.jumlah,
+        current.rows.length + 1, r.nama, r.tglJtoDisplay, r.divisi, fmtNumExport(r.jumlah),
         belum ? 'Belum' : `Sudah (${r.tglBuatTagihan})`, r.hari,
         cleanSalesmanFull(r.salesman), r.supervisor || '–', r.faktur,
         (r.tglBarcode && r.tglBarcode !== '#N/A') ? r.tglBarcode : '–',
       ]);
+    });
+    groups.forEach(g => {
+      const groupRows = list.filter(r => leasingOf(r) === g.key);
+      const sum = groupRows.reduce((s, r) => s + r.jumlah, 0);
+      const totalRow = new Array(colHeaders.length).fill('');
+      totalRow[1] = `TOTAL (${groupRows.length} unit)`;
+      totalRow[4] = fmtNumExport(sum);
+      g.totalRow = totalRow;
     });
     return [{ name: 'Followup Penagihan', groups }];
   }
