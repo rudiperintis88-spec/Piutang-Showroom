@@ -1221,6 +1221,7 @@
           body: g.rows,
           foot: g.totalRow ? [g.totalRow] : undefined,
           footStyles: { fontStyle: 'bold', fillColor: [240, 242, 245], textColor: [20, 20, 20] },
+          showFoot: 'lastPage', // Total cuma tampil sekali di halaman terakhir tabel ini, tidak dobel tiap tabel terpotong halaman
           startY: y,
           styles: { fontSize: 7.5 },
           rowPageBreak: 'avoid',
@@ -1229,7 +1230,12 @@
       };
       if (s.sections) {
         s.sections.forEach(sec => {
-          if (y + 15 > PAGE_H - BOTTOM_MARGIN) { doc.addPage(); y = 15; }
+          // Judul section + perkiraan tinggi grup PERTAMA di bawahnya harus muat
+          // bersamaan — supaya judul section tidak "nyangkut sendirian" di akhir
+          // halaman sementara isinya baru muncul di halaman berikutnya.
+          const firstGroup = sec.groups[0];
+          const firstGroupMinHeight = firstGroup ? (firstGroup.title ? 6 : 0) + 7 + Math.min(firstGroup.rows.length, 1) * 5 + (firstGroup.totalRow ? 5.5 : 0) : 0;
+          if (y + 15 + firstGroupMinHeight > PAGE_H - BOTTOM_MARGIN) { doc.addPage(); y = 15; }
           doc.setFontSize(12.5);
           doc.setFont(undefined, 'bold');
           doc.text(sec.title, 14, y);
@@ -1476,7 +1482,7 @@
           totalRow,
         };
       });
-      sections.push({ title: divName, groups });
+      sections.push({ title: `Divisi ${divName}`, groups });
     });
     return [{ name: 'Detail Penjualan', sections }];
   }
