@@ -404,12 +404,61 @@
     table.leasing-table { display: block; overflow-x: auto; }
   }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  .pw-gate { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+  .pw-gate.hidden { display: none; }
+  .pw-box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 32px; width: 300px; box-shadow: 0 4px 24px rgba(16,24,40,.1); text-align: center; }
+  .pw-title { font-family: var(--serif); font-size: 20px; font-weight: 500; margin-bottom: 6px; color: var(--ink); }
+  .pw-sub { font-size: 12.5px; color: var(--ink-faint); margin-bottom: 20px; }
+  #pwForm input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box; font-family: var(--sans); }
+  #pwForm input:focus { outline: none; border-color: var(--accent2); }
+  #pwForm button { width: 100%; padding: 10px; background: var(--accent2); color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: var(--sans); }
+  #pwForm button:hover { opacity: .92; }
+  .pw-error { color: var(--b4); font-size: 12.5px; margin-top: 12px; }
+  .pw-error.hidden { display: none; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
+  <div id="passwordGate" class="pw-gate">
+    <div class="pw-box">
+      <div class="pw-title">PT Perintis Perkasa</div>
+      <div class="pw-sub">Masukkan password untuk membuka dashboard</div>
+      <form id="pwForm">
+        <input type="password" id="pwInput" placeholder="Password" autocomplete="current-password">
+        <button type="submit">Masuk</button>
+      </form>
+      <div id="pwError" class="pw-error hidden">Password salah, coba lagi.</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var CORRECT_PASSWORD = 'perintis2026';
+      var gate = document.getElementById('passwordGate');
+      var form = document.getElementById('pwForm');
+      var input = document.getElementById('pwInput');
+      var errorEl = document.getElementById('pwError');
+      if (sessionStorage.getItem('pp_dashboard_auth') === '1') {
+        gate.classList.add('hidden');
+      } else {
+        input.focus();
+      }
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (input.value === CORRECT_PASSWORD) {
+          sessionStorage.setItem('pp_dashboard_auth', '1');
+          gate.classList.add('hidden');
+        } else {
+          errorEl.classList.remove('hidden');
+          input.value = '';
+          input.focus();
+        }
+      });
+    })();
+  </script>
+
 <div class="wrap">
 
   <div class="masthead">
