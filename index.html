@@ -1200,14 +1200,24 @@
       doc.setFontSize(13);
       doc.text(String(s.name || title), 14, 15);
       let y = 22;
-      const emitGroup = (g) => {
+      const emitGroup = (g, extraHeight = 0, sectionTitle = null) => {
         // Perkiraan tinggi seluruh grup (judul + header + baris + Total), supaya
         // satu grup tidak kepotong jadi dua halaman — kalau tidak muat, pindah
-        // grup ini utuh ke halaman baru.
-        const estHeight = (g.title ? 6 : 0) + 7 + g.rows.length * 5 + (g.totalRow ? 5.5 : 0) + 8;
-        if (y + Math.min(estHeight, PAGE_H - BOTTOM_MARGIN - 22) > PAGE_H - BOTTOM_MARGIN) {
+        // grup ini utuh ke halaman baru. extraHeight/sectionTitle = ruang & teks
+        // judul section yang harus ikut dihitung BERSAMAAN saat ini grup pertama
+        // di section-nya, supaya judul section tidak pernah nyangkut sendirian.
+        const estHeight = extraHeight + (g.title ? 6 : 0) + 7 + g.rows.length * 5 + (g.totalRow ? 5.5 : 0) + 8;
+        const cappedEst = Math.min(estHeight, PAGE_H - BOTTOM_MARGIN - 22 - extraHeight);
+        if (y + extraHeight + cappedEst > PAGE_H - BOTTOM_MARGIN) {
           doc.addPage();
           y = 15;
+        }
+        if (sectionTitle) {
+          doc.setFontSize(12.5);
+          doc.setFont(undefined, 'bold');
+          doc.text(sectionTitle, 14, y);
+          doc.setFont(undefined, 'normal');
+          y += 7;
         }
         if (g.title) {
           doc.setFontSize(10.5);
@@ -1230,18 +1240,13 @@
       };
       if (s.sections) {
         s.sections.forEach(sec => {
-          // Judul section + perkiraan tinggi grup PERTAMA di bawahnya harus muat
-          // bersamaan — supaya judul section tidak "nyangkut sendirian" di akhir
-          // halaman sementara isinya baru muncul di halaman berikutnya.
-          const firstGroup = sec.groups[0];
-          const firstGroupMinHeight = firstGroup ? (firstGroup.title ? 6 : 0) + 7 + Math.min(firstGroup.rows.length, 1) * 5 + (firstGroup.totalRow ? 5.5 : 0) : 0;
-          if (y + 15 + firstGroupMinHeight > PAGE_H - BOTTOM_MARGIN) { doc.addPage(); y = 15; }
-          doc.setFontSize(12.5);
-          doc.setFont(undefined, 'bold');
-          doc.text(sec.title, 14, y);
-          doc.setFont(undefined, 'normal');
-          y += 7;
-          sec.groups.forEach(emitGroup);
+          sec.groups.forEach((g, gi) => {
+            if (gi === 0) {
+              emitGroup(g, 15, sec.title);
+              return;
+            }
+            emitGroup(g);
+          });
         });
       } else {
         s.groups.forEach(emitGroup);
