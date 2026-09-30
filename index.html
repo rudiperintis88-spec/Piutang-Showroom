@@ -424,7 +424,7 @@
 <body>
   <div id="passwordGate" class="pw-gate">
     <div class="pw-box">
-      <div class="pw-title">PT Perintis Perkasa</div>
+      <div class="pw-title">PT Perintis Perkasa Divisi Unit</div>
       <div class="pw-sub">Masukkan password untuk membuka dashboard</div>
       <form id="pwForm">
         <input type="password" id="pwInput" placeholder="Password" autocomplete="current-password">
@@ -440,15 +440,10 @@
       var form = document.getElementById('pwForm');
       var input = document.getElementById('pwInput');
       var errorEl = document.getElementById('pwError');
-      if (sessionStorage.getItem('pp_dashboard_auth') === '1') {
-        gate.classList.add('hidden');
-      } else {
-        input.focus();
-      }
+      input.focus();
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         if (input.value === CORRECT_PASSWORD) {
-          sessionStorage.setItem('pp_dashboard_auth', '1');
           gate.classList.add('hidden');
         } else {
           errorEl.classList.remove('hidden');
