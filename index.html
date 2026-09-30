@@ -307,6 +307,7 @@
   table.dp2-table td { padding: 9px 14px; border-bottom: 1px solid var(--line-soft); }
   table.dp2-table tr:last-child td { border-bottom: none; }
   table.dp2-table td.dp2num { text-align: right; font-family: var(--mono); }
+  tr.dp2-total-row td { background: var(--panel-2); font-weight: 600; padding: 8px 14px; }
 
   /* Sales Terbanyak */
   .st-block { margin-bottom: 22px; }
@@ -578,6 +579,10 @@
       <select id="rcLeasingSelect" class="dp-range-select"><option value="all">Semua Leasing</option></select>
       <button id="rcMinAll" class="dp-export-btn">Minimize semua</button>
       <button id="rcOpenAll" class="dp-export-btn">Buka semua</button>
+      <div class="dp-export">
+        <button id="rcExportPdf" class="dp-export-btn">⭳ Export PDF</button>
+        <button id="rcExportExcel" class="dp-export-btn">⭳ Export Excel</button>
+      </div>
     </div>
     <div id="rincianWrap"></div>
   </div>
@@ -595,6 +600,10 @@
         <button class="active" data-status="all">Semua</button>
         <button data-status="belum">Belum tagih</button>
         <button data-status="sudah">Sudah tagih</button>
+      </div>
+      <div class="dp-export">
+        <button id="fuExportPdf" class="dp-export-btn">⭳ Export PDF</button>
+        <button id="fuExportExcel" class="dp-export-btn">⭳ Export Excel</button>
       </div>
     </div>
     <div class="fu-table-wrap">
@@ -1350,7 +1359,9 @@
         <div class="dp2-group-detail ${isOpen ? '' : 'hidden'}" data-groupdetailidx="${gi}">
           <table class="dp2-table">
             <thead><tr><th style="text-align:right">No</th>${dp2HeadHtml}</tr></thead>
-            <tbody>${detailRows}</tbody>
+            <tbody>${detailRows}
+              <tr class="dp2-total-row"><td colspan="7">Total <b>${list.length} unit</b></td></tr>
+            </tbody>
           </table>
         </div>`;
     }).join('');
@@ -2274,6 +2285,41 @@
     sel.dataset.populated = '1';
   }
 
+  let rincianDetailSort = { key: 'hari', dir: 'desc' };
+  const RINCIAN_COLS = [
+    { key: 'nama', label: 'Nama Debitur' },
+    { key: 'faktur', label: 'No. Faktur' },
+    { key: 'tglJto', label: 'Tgl. Jatuh Tempo' },
+    { key: 'jumlah', label: 'Jumlah', num: true },
+    { key: 'giro', label: 'Giro', num: true },
+    { key: 'type', label: 'Type' },
+    { key: 'leasing', label: 'Leasing' },
+    { key: 'salesman', label: 'Salesman' },
+    { key: 'supervisor', label: 'Supervisor' },
+    { key: 'hari', label: 'Hari', num: true },
+  ];
+  function parseDMYDisplay(s) {
+    const m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : 0;
+  }
+  function rincianSortRows(rows) {
+    const key = rincianDetailSort.key, dir = rincianDetailSort.dir === 'asc' ? 1 : -1;
+    return rows.slice().sort((a, b) => {
+      if (key === 'hari') return (a.hari - b.hari) * dir;
+      if (key === 'jumlah') return (a.jumlah - b.jumlah) * dir;
+      if (key === 'giro') return ((Number(a.giro) || 0) - (Number(b.giro) || 0)) * dir;
+      if (key === 'tglJto') return (parseDMYDisplay(a.tglJtoDisplay) - parseDMYDisplay(b.tglJtoDisplay)) * dir;
+      let va, vb;
+      if (key === 'nama') { va = a.nama; vb = b.nama; }
+      else if (key === 'faktur') { va = a.faktur; vb = b.faktur; }
+      else if (key === 'type') { va = a.type; vb = b.type; }
+      else if (key === 'leasing') { va = a.leasing || a.cara; vb = b.leasing || b.cara; }
+      else if (key === 'supervisor') { va = a.supervisor; vb = b.supervisor; }
+      else { va = cleanSalesmanFull(a.salesman); vb = cleanSalesmanFull(b.salesman); }
+      return String(va || '').localeCompare(String(vb || '')) * dir;
+    });
+  }
+
   function renderRincianLeasing(rows) {
     if (rows) lastRincianRows = rows;
     rows = lastRincianRows;
@@ -2297,6 +2343,11 @@
       );
     }
 
+    const headHtml = RINCIAN_COLS.map(c => {
+      const arrow = rincianDetailSort.key === c.key ? `<span class="sort-arrow">${rincianDetailSort.dir === 'asc' ? '▲' : '▼'}</span>` : '';
+      return `<th ${c.num ? 'style="text-align:right"' : ''} class="bdp-sortable" data-sort="${c.key}">${c.label}${arrow}</th>`;
+    }).join('');
+
     wrap.innerHTML = BRANCH_ORDER.map(name => {
       const meta = BRANCH_META[name];
       const sub = filtered.filter(r => r.divisi === name);
@@ -2307,7 +2358,7 @@
       const groupKeys = Object.keys(groupTotals).sort((a,b) => groupTotals[b] - groupTotals[a]);
 
       const blocks = groupKeys.map(key => {
-        const glist = sub.filter(r => leasingKeyOf(r) === key).sort((a,b) => b.hari - a.hari);
+        const glist = rincianSortRows(sub.filter(r => leasingKeyOf(r) === key));
         const gid = `${meta.key}__${key}`;
         const isOpen = !rincianState.collapsed.has(gid);
         const trs = glist.map((r, i) => `
@@ -2329,8 +2380,7 @@
           <div class="rincian-table-wrap dp2-group-detail ${isOpen?'':'hidden'}" data-gdetail="${esc(gid)}">
             <table class="rincian-table">
               <thead><tr>
-                <th style="text-align:right">No</th><th>Nama Debitur</th><th>No. Faktur</th><th>Tgl. Jatuh Tempo</th><th style="text-align:right">Jumlah</th>
-                <th style="text-align:right">Giro</th><th>Type</th><th>Leasing</th><th>Salesman</th><th>Supervisor</th><th style="text-align:right">Hari</th>
+                <th style="text-align:right">No</th>${headHtml}
               </tr></thead>
               <tbody>${trs}</tbody>
             </table>
@@ -2346,6 +2396,15 @@
       </div>`;
     }).join('');
 
+    wrap.querySelectorAll('th.bdp-sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const k = th.dataset.sort;
+        if (rincianDetailSort.key === k) rincianDetailSort.dir = rincianDetailSort.dir === 'asc' ? 'desc' : 'asc';
+        else { rincianDetailSort = { key: k, dir: 'asc' }; }
+        renderRincianLeasing();
+      });
+    });
+
     wrap.querySelectorAll('.dp2-group-bar').forEach(bar => {
       bar.addEventListener('click', () => {
         const gid = bar.dataset.gid;
@@ -2358,6 +2417,41 @@
     });
   }
 
+  function gatherRincianExportSheet() {
+    const leasingKeyOf = r => (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing;
+    const rows = lastRincianRows || [];
+    const search = rincianState.search.trim().toLowerCase();
+    let filtered = rows;
+    if (rincianState.leasingFilter !== 'all') filtered = filtered.filter(r => leasingKeyOf(r) === rincianState.leasingFilter);
+    if (search) {
+      filtered = filtered.filter(r =>
+        (r.nama || '').toLowerCase().includes(search) ||
+        (r.type || '').toLowerCase().includes(search) ||
+        (r.faktur || '').toLowerCase().includes(search) ||
+        cleanSalesmanFull(r.salesman).toLowerCase().includes(search)
+      );
+    }
+    const colHeaders = ['No', 'Nama Debitur', 'No. Faktur', 'Tgl. Jatuh Tempo', 'Jumlah', 'Giro', 'Type', 'Salesman', 'Supervisor', 'Hari'];
+    const groups = [];
+    BRANCH_ORDER.forEach(name => {
+      const sub = filtered.filter(r => r.divisi === name);
+      if (!sub.length) return;
+      const groupTotals = {};
+      sub.forEach(r => { const k = leasingKeyOf(r); groupTotals[k] = (groupTotals[k] || 0) + r.jumlah; });
+      const groupKeys = Object.keys(groupTotals).sort((a, b) => groupTotals[b] - groupTotals[a]);
+      groupKeys.forEach(key => {
+        // Acuan: dikelompokkan Cabang → Leasing, dalam grup diurutkan umur piutang (Hari) tertinggi.
+        const glist = sub.filter(r => leasingKeyOf(r) === key).slice().sort((a, b) => b.hari - a.hari);
+        groups.push({
+          title: `${name} — ${key}`,
+          headers: colHeaders,
+          rows: glist.map((r, i) => [i + 1, r.nama, r.faktur, r.tglJtoDisplay, r.jumlah, r.giro || '-', r.type || '-', cleanSalesmanFull(r.salesman), r.supervisor || '-', r.hari]),
+        });
+      });
+    });
+    return [{ name: 'Rincian Leasing', groups }];
+  }
+
   function wireRincianLeasingControls() {
     document.getElementById('rcSearch').addEventListener('input', (e) => { rincianState.search = e.target.value; renderRincianLeasing(); });
     document.getElementById('rcLeasingSelect').addEventListener('change', (e) => { rincianState.leasingFilter = e.target.value; renderRincianLeasing(); });
@@ -2366,6 +2460,8 @@
       renderRincianLeasing();
     });
     document.getElementById('rcOpenAll').addEventListener('click', () => { rincianState.collapsed.clear(); renderRincianLeasing(); });
+    document.getElementById('rcExportExcel').addEventListener('click', () => exportToExcel('Rincian_Leasing.xlsx', gatherRincianExportSheet()));
+    document.getElementById('rcExportPdf').addEventListener('click', () => exportToPdf('Rincian_Leasing.pdf', 'Rincian Leasing (Umur Piutang)', gatherRincianExportSheet()));
   }
 
 
@@ -2375,6 +2471,54 @@
 
   function isBelumTagih(r) {
     return /belum/i.test(r.tglBuatTagihan || '');
+  }
+
+  function gatherFuExportSheet() {
+    const leasingOf = r => (r.cara === 'Tunai' || !r.leasing) ? 'Cash' : r.leasing;
+    const parseDMY = s => {
+      const m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : 0;
+    };
+    const q = fuState.search.trim().toLowerCase();
+    let list = fuAllRows.filter(r => {
+      const leasingKey = leasingOf(r);
+      if (fuState.leasing && leasingKey !== fuState.leasing) return false;
+      if (fuState.cabang && r.divisi !== fuState.cabang) return false;
+      if (fuState.status === 'belum' && !isBelumTagih(r)) return false;
+      if (fuState.status === 'sudah' && isBelumTagih(r)) return false;
+      if (q) {
+        const hay = `${r.nama} ${r.faktur} ${r.salesman}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    // Acuan: dikelompokkan per Leasing, dalam grup diurutkan Tgl JTO lalu Hari,
+    // No reset mulai dari 1 tiap ganti Leasing.
+    list.sort((a, b) => {
+      const la = leasingOf(a), lb = leasingOf(b);
+      if (la !== lb) return la.localeCompare(lb);
+      const da = parseDMY(a.tglJtoDisplay), db = parseDMY(b.tglJtoDisplay);
+      if (da !== db) return da - db;
+      return a.hari - b.hari;
+    });
+    const colHeaders = ['No', 'Nama Customer', 'Tgl JTO', 'Cabang', 'Jumlah', 'Tgl Buat Tagihan', 'Hari', 'Salesman', 'Supervisor', 'Faktur No.', 'Tgl Barcode'];
+    const groups = [];
+    let current = null;
+    list.forEach(r => {
+      const k = leasingOf(r);
+      if (!current || current.key !== k) {
+        current = { key: k, title: `Leasing: ${k}`, headers: colHeaders, rows: [] };
+        groups.push(current);
+      }
+      const belum = isBelumTagih(r);
+      current.rows.push([
+        current.rows.length + 1, r.nama, r.tglJtoDisplay, r.divisi, r.jumlah,
+        belum ? 'Belum' : `Sudah (${r.tglBuatTagihan})`, r.hari,
+        cleanSalesmanFull(r.salesman), r.supervisor || '–', r.faktur,
+        (r.tglBarcode && r.tglBarcode !== '#N/A') ? r.tglBarcode : '–',
+      ]);
+    });
+    return [{ name: 'Followup Penagihan', groups }];
   }
 
   function populateFollowupFilters(rows) {
@@ -2479,6 +2623,8 @@
         applyFollowupFilters();
       });
     });
+    document.getElementById('fuExportExcel').addEventListener('click', () => exportToExcel('Followup_Penagihan.xlsx', gatherFuExportSheet()));
+    document.getElementById('fuExportPdf').addEventListener('click', () => exportToPdf('Followup_Penagihan.pdf', 'Followup Penagihan ke Leasing', gatherFuExportSheet()));
   }
 
   /* ---------------- refresh Piutang from Google Sheets via JSONP ---------------- */
