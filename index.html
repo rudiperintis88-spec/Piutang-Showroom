@@ -463,7 +463,7 @@
     <button class="tabbtn" data-tab="perdivisi">Kartu Ringkasan Divisi</button>
     <button class="tabbtn" data-tab="penjualan">Penjualan per Divisi</button>
     <button class="tabbtn" data-tab="detailpenjualan">Detail Penjualan</button>
-    <button class="tabbtn" data-tab="salesterbanyak">Sales Terbanyak</button>
+    <button class="tabbtn" data-tab="salesterbanyak">Penjualan Sales Terbanyak</button>
   </div>
 
   <div class="tabpane" id="tab-cabang">
@@ -1249,7 +1249,7 @@
           });
         });
       } else {
-        s.groups.forEach(emitGroup);
+        s.groups.forEach(g => emitGroup(g));
       }
     });
     doc.save(filename);
@@ -1621,7 +1621,7 @@
         </div>`;
       }).join('');
       return `<div class="st-block">
-        <div class="st-title">Sales Terbanyak <span style="color:var(--ink-faint); font-weight:400; font-family:var(--sans); font-size:12px">${esc(rangeLabel)} · ${esc(d.name)}</span></div>
+        <div class="st-title">Penjualan Sales Terbanyak <span style="color:var(--ink-faint); font-weight:400; font-family:var(--sans); font-size:12px">${esc(rangeLabel)} · ${esc(d.name)}</span></div>
         <div class="st-cards">${cardsHtml}</div>
       </div>`;
     }).join('');
@@ -2831,10 +2831,10 @@
   });
   wireSalesTerbanyakDelegation();
   document.getElementById('stExportExcel').addEventListener('click', () => {
-    exportToExcel('Sales_Terbanyak.xlsx', gatherStExportSheets());
+    exportToExcel('Penjualan_Sales_Terbanyak.xlsx', gatherStExportSheets());
   });
   document.getElementById('stExportPdf').addEventListener('click', () => {
-    exportToPdf('Sales_Terbanyak.pdf', 'Sales Terbanyak', gatherStExportSheets());
+    exportToPdf('Penjualan_Sales_Terbanyak.pdf', 'Penjualan Sales Terbanyak', gatherStExportSheets());
   });
   wireDetailPenjualanV2();
   renderPriorityTable(priority);
