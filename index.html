@@ -1159,16 +1159,17 @@
     const wb = XLSX.utils.book_new();
     sheets.forEach(s => {
       const matrix = [];
+      const boldRows = []; // baris judul & Total dibuat bold
       const emitGroup = (g) => {
-        if (g.title) matrix.push([g.title]);
+        if (g.title) { matrix.push([g.title]); boldRows.push(matrix.length - 1); }
         matrix.push(g.headers);
         g.rows.forEach(r => matrix.push(r));
-        if (g.totalRow) matrix.push(g.totalRow);
+        if (g.totalRow) { matrix.push(g.totalRow); boldRows.push(matrix.length - 1); }
         matrix.push([]);
       };
       if (s.sections) {
         s.sections.forEach(sec => {
-          matrix.push([sec.title]);
+          matrix.push([sec.title]); boldRows.push(matrix.length - 1);
           matrix.push([]);
           sec.groups.forEach(emitGroup);
         });
@@ -1176,21 +1177,38 @@
         s.groups.forEach(emitGroup);
       }
       const ws = XLSX.utils.aoa_to_sheet(matrix);
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+      boldRows.forEach(r => {
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          if (ws[ref]) ws[ref].s = { font: { bold: true } };
+        }
+      });
       XLSX.utils.book_append_sheet(wb, ws, String(s.name).slice(0, 31));
     });
-    XLSX.writeFile(wb, filename);
+    XLSX.writeFile(wb, filename, { cellStyles: true });
   }
 
   function exportToPdf(filename, title, sheets) {
     if (!window.jspdf) { alert('Library PDF belum termuat — pastikan koneksi internet aktif, lalu coba lagi.'); return; }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
+    const PAGE_H = doc.internal.pageSize.getHeight();
+    const BOTTOM_MARGIN = 15;
     sheets.forEach((s, si) => {
       if (si > 0) doc.addPage();
       doc.setFontSize(13);
       doc.text(String(s.name || title), 14, 15);
       let y = 22;
       const emitGroup = (g) => {
+        // Perkiraan tinggi seluruh grup (judul + header + baris + Total), supaya
+        // satu grup tidak kepotong jadi dua halaman — kalau tidak muat, pindah
+        // grup ini utuh ke halaman baru.
+        const estHeight = (g.title ? 6 : 0) + 7 + g.rows.length * 5 + (g.totalRow ? 5.5 : 0) + 8;
+        if (y + Math.min(estHeight, PAGE_H - BOTTOM_MARGIN - 22) > PAGE_H - BOTTOM_MARGIN) {
+          doc.addPage();
+          y = 15;
+        }
         if (g.title) {
           doc.setFontSize(10.5);
           doc.setFont(undefined, 'bold');
@@ -1198,12 +1216,20 @@
           doc.setFont(undefined, 'normal');
           y += 4;
         }
-        const body = g.totalRow ? [...g.rows, g.totalRow] : g.rows;
-        doc.autoTable({ head: [g.headers], body, startY: y, styles: { fontSize: 7.5 } });
+        doc.autoTable({
+          head: [g.headers],
+          body: g.rows,
+          foot: g.totalRow ? [g.totalRow] : undefined,
+          footStyles: { fontStyle: 'bold', fillColor: [240, 242, 245], textColor: [20, 20, 20] },
+          startY: y,
+          styles: { fontSize: 7.5 },
+          rowPageBreak: 'avoid',
+        });
         y = doc.lastAutoTable.finalY + 8;
       };
       if (s.sections) {
         s.sections.forEach(sec => {
+          if (y + 15 > PAGE_H - BOTTOM_MARGIN) { doc.addPage(); y = 15; }
           doc.setFontSize(12.5);
           doc.setFont(undefined, 'bold');
           doc.text(sec.title, 14, y);
