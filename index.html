@@ -396,9 +396,23 @@
 
   footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-faint); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 
+  /* Layar sempit (< 1180px): teks status & sumber boleh turun ke baris berikutnya
+     (satu baris penuh, rata kiri) supaya tidak terpotong / berdesakan di samping judul. */
+  @media (max-width: 1180px) {
+    .masthead > .meta { flex: 1 1 100%; max-width: 100%; text-align: left; min-width: 0; overflow-wrap: anywhere; }
+    .masthead > .meta #refreshRow { justify-content: flex-start !important; }
+    #syncStatus { white-space: normal; overflow-wrap: anywhere; }
+    .tabbar { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+    .tabbtn { white-space: nowrap; flex: 0 0 auto; }
+  }
+
+  /* HP: judul & keterangan tersusun rapi dari atas ke bawah. */
   @media (max-width: 640px) {
     .wrap { padding: 28px 16px 90px; }
-    .masthead { flex-direction: column; align-items: flex-start; }
+    .masthead { flex-direction: column; align-items: stretch; gap: 12px; padding-bottom: 20px; margin-bottom: 24px; }
+    .masthead > div:first-child { display: flex; flex-direction: column; gap: 4px; }
+    .masthead .co { margin-bottom: 0; }
+    .masthead h1 { font-size: 28px; }
     .masthead .meta { text-align: left; }
     table.prio { display: block; overflow-x: auto; }
     table.leasing-table { display: block; overflow-x: auto; }
@@ -411,6 +425,10 @@
   .pw-co { font-size: 13px; color: var(--ink-dim); margin-bottom: 10px; }
   .pw-title { font-family: var(--serif); font-size: 28px; font-weight: 600; margin-bottom: 12px; color: var(--ink); line-height: 1.2; }
   .pw-sub { font-size: 14px; color: var(--ink-dim); margin-bottom: 24px; line-height: 1.5; }
+  .pw-field { position: relative; margin-bottom: 12px; }
+  .pw-field input { margin-bottom: 0 !important; padding-right: 48px !important; }
+  .pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 40px !important; height: 40px; padding: 0 !important; background: none !important; border: none !important; color: var(--ink-faint) !important; border-radius: 10px !important; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .pw-eye:hover { color: var(--accent2) !important; opacity: 1 !important; }
   #pwForm input { width: 100%; padding: 14px 16px; border: 1px solid var(--line); background: #F8FAFC; border-radius: 12px; font-size: 16px; margin-bottom: 12px; box-sizing: border-box; font-family: var(--sans); }
   #pwForm input:focus { outline: none; border: 2px solid var(--accent2); padding: 13px 15px; }
   #pwForm button { width: 100%; padding: 14px; background: var(--accent2); color: #fff; border: none; border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer; font-family: var(--sans); }
@@ -429,7 +447,13 @@
       <div class="pw-title">Divisi Unit</div>
       <div class="pw-sub">Masukkan password divisi Unit untuk membuka dashboard</div>
       <form id="pwForm">
-        <input type="password" id="pwInput" placeholder="Password" autocomplete="current-password">
+        <div class="pw-field">
+          <input type="password" id="pwInput" placeholder="Password" autocomplete="current-password">
+          <button type="button" id="pwToggle" class="pw-eye" aria-label="Tampilkan password" aria-pressed="false" title="Tampilkan / sembunyikan password">
+            <svg id="pwEyeOn" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg id="pwEyeOff" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a19.8 19.8 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.9 10.9 0 0 1 12 5c7 0 11 7 11 7a19.9 19.9 0 0 1-3.17 4.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
         <button type="submit">Masuk</button>
       </form>
       <div id="pwError" class="pw-error hidden">Password salah, coba lagi.</div>
@@ -443,6 +467,18 @@
       var input = document.getElementById('pwInput');
       var errorEl = document.getElementById('pwError');
       input.focus();
+      var toggle = document.getElementById('pwToggle');
+      var eyeOn = document.getElementById('pwEyeOn');
+      var eyeOff = document.getElementById('pwEyeOff');
+      toggle.addEventListener('click', function () {
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        eyeOn.style.display = show ? 'none' : '';
+        eyeOff.style.display = show ? '' : 'none';
+        toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+        toggle.setAttribute('aria-label', show ? 'Sembunyikan password' : 'Tampilkan password');
+        input.focus();
+      });
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         if (input.value === CORRECT_PASSWORD) {
