@@ -109,9 +109,6 @@
   /* ---------- section title ---------- */
   .stitle { display: flex; align-items: baseline; justify-content: space-between; margin: 40px 0 16px; flex-wrap: wrap; gap: 8px; }
   .stitle h2 { font-family: var(--serif); font-weight: 500; font-size: 21px; margin: 0; }
-  .notes-sync { font-family: var(--sans) !important; font-size: 12.5px; }
-  .notes-sync.ok { color: #15803D !important; }
-  .notes-sync.err { color: var(--b4) !important; }
   .stitle span { font-size: 12.5px; color: var(--ink-faint); font-family: var(--mono); }
 
   /* ---------- branch cards ---------- */
@@ -720,7 +717,7 @@
 
   <!-- PRIORITY -->
   <div id="priorityBlock">
-    <div class="stitle"><h2>Prioritas Penagihan</h2><span>faktur dengan umur &gt; 26 hari · klik baris untuk catatan &amp; tugas</span><span id="notesSyncStatus" class="notes-sync"></span></div>
+    <div class="stitle"><h2>Prioritas Penagihan</h2><span>faktur dengan umur &gt; 26 hari · klik baris untuk catatan &amp; tugas</span></div>
     <div class="priowrap">
       <div class="prio-head">
         <div class="t"><span class="flag"></span><h2 id="prioHeadCount">4 faktur butuh tindak lanjut segera</h2></div>
@@ -914,7 +911,7 @@
       tr.dataset.detail = rid;
       tr.innerHTML = `
         <td style="text-align:right">${li + 1}</td>
-        <td><span class="dexp">▸</span><span class="leasing-name">${esc(l.name)}</span>${isCash ? '<span class="tag">langsung, tanpa leasing</span>' : ''}</td>
+        <td><span class="dexp">▸</span><span class="leasing-name">${isCash ? 'Cash (Tunai)' : esc(l.name)}</span></td>
         ${branchCells}
         <td style="text-align:center">${l.count}</td>
         <td class="jumlah-mono">${fmtRp(l.sum)}</td>
@@ -1015,7 +1012,7 @@
           </tr>`).join('');
         const mainRow = `<tr class="dlrow ${count ? 'clickable' : ''}" data-detail="${rid}">
           <td style="text-align:right">${li + 1}</td>
-          <td>${count ? '<span class="dexp">▸</span>' : ''}${esc(l.name)}</td>
+          <td>${count ? '<span class="dexp">▸</span>' : ''}${l.name === 'Cash' ? 'Cash (Tunai)' : esc(l.name)}</td>
           <td class="dnum ${!count?'zero':''}">${count || '–'}</td>
           <td class="dnum ${!sum?'zero':''}">${sum ? fmtRp(sum) : '–'}</td>
           <td class="dnum ${!sum?'zero':''}">${sum ? pct.toFixed(1)+'%' : '–'}</td>
@@ -2143,7 +2140,7 @@
     catch(e) { return []; }
   }
   function lsSet(key, arr) {
-    try { localStorage.setItem(key, JSON.stringify(arr)); if (key === LS_NOTES || key === LS_TASKS) syncSoon(); return true; }
+    try { localStorage.setItem(key, JSON.stringify(arr)); return true; }
     catch(e) { console.error('localStorage penuh/tidak tersedia', e); return false; }
   }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -2162,7 +2159,7 @@
         const text = ta.value.trim();
         if (!text) return;
         const notes = lsGet(LS_NOTES);
-        notes.push({ id: uid(), faktur: fslug, fakturRaw: meta.faktur, debtorName: meta.name, cabang: meta.cabangLabel, text, createdAt: new Date().toISOString() });
+        notes.push({ id: uid(), faktur: fslug, debtorName: meta.name, cabang: meta.cabangLabel, text, createdAt: new Date().toISOString() });
         lsSet(LS_NOTES, notes);
         ta.value = '';
         renderAllNotes();
@@ -2178,7 +2175,7 @@
         const assignee = form.querySelector('.tassignee').value.trim();
         if (!title) return;
         const tasks = lsGet(LS_TASKS);
-        tasks.unshift({ id: uid(), title, assignee: assignee || null, faktur: fslug, fakturRaw: meta.faktur, debtorName: meta.name, cabang: meta.cabangLabel, status: 'todo', createdAt: new Date().toISOString(), u: new Date().toISOString() });
+        tasks.unshift({ id: uid(), title, assignee: assignee || null, faktur: fslug, debtorName: meta.name, cabang: meta.cabangLabel, status: 'todo', createdAt: new Date().toISOString() });
         lsSet(LS_TASKS, tasks);
         form.querySelector('.ttitle').value = '';
         renderAllFakturTasks();
@@ -2197,7 +2194,7 @@
         const checked = e.target.checked;
         const tasks = lsGet(LS_TASKS);
         const t = tasks.find(x => x.id === id);
-        if (t) { t.status = checked ? 'done' : 'todo'; t.doneAt = checked ? new Date().toISOString() : null; t.u = new Date().toISOString(); lsSet(LS_TASKS, tasks); }
+        if (t) { t.status = checked ? 'done' : 'todo'; lsSet(LS_TASKS, tasks); }
         renderAllFakturTasks();
         renderGeneralTasks();
       }
@@ -2224,7 +2221,7 @@
   function renderAllFakturTasks() {
     const tasks = lsGet(LS_TASKS);
     const byFaktur = {};
-    tasks.forEach(t => { if (t.faktur && !t.del) (byFaktur[t.faktur] ||= []).push(t); });
+    tasks.forEach(t => { if (t.faktur) (byFaktur[t.faktur] ||= []).push(t); });
     Object.keys(detailMeta).forEach(fslug => {
       const el = document.querySelector(`.task-list[data-tasks="${fslug}"]`);
       if (!el) return;
@@ -2254,7 +2251,7 @@
       const assignee = form.querySelector('.gassignee').value.trim();
       if (!title) return;
       const tasks = lsGet(LS_TASKS);
-      tasks.unshift({ id: uid(), title, assignee: assignee || null, faktur: null, status: 'todo', createdAt: new Date().toISOString(), u: new Date().toISOString() });
+      tasks.unshift({ id: uid(), title, assignee: assignee || null, faktur: null, status: 'todo', createdAt: new Date().toISOString() });
       lsSet(LS_TASKS, tasks);
       form.querySelector('.gtitle').value = '';
       form.querySelector('.gassignee').value = '';
@@ -2275,16 +2272,14 @@
         const checked = e.target.checked;
         const tasks = lsGet(LS_TASKS);
         const t = tasks.find(x => x.id === id);
-        if (t) { t.status = checked ? 'done' : 'todo'; t.doneAt = checked ? new Date().toISOString() : null; t.u = new Date().toISOString(); lsSet(LS_TASKS, tasks); }
+        if (t) { t.status = checked ? 'done' : 'todo'; lsSet(LS_TASKS, tasks); }
         renderGeneralTasks();
       }
     });
     document.getElementById('gtaskList').addEventListener('click', e => {
       const btn = e.target.closest('button[data-del]');
       if (!btn) return;
-      const tasks = lsGet(LS_TASKS);
-      const dt = tasks.find(t => t.id === btn.dataset.del);
-      if (dt) { dt.del = true; dt.u = new Date().toISOString(); }
+      const tasks = lsGet(LS_TASKS).filter(t => t.id !== btn.dataset.del);
       lsSet(LS_TASKS, tasks);
       renderGeneralTasks();
     });
@@ -2293,7 +2288,7 @@
   }
 
   function renderGeneralTasks() {
-    const all = lsGet(LS_TASKS).filter(t => !t.faktur && !t.del);
+    const all = lsGet(LS_TASKS).filter(t => !t.faktur);
     const el = document.getElementById('gtaskList');
     let filtered = all;
     if (currentFilter === 'todo') filtered = all.filter(t => t.status !== 'done');
@@ -2312,7 +2307,6 @@
   }
 
   function fmtTime(iso) {
-    if (!iso || String(iso).startsWith('1970')) return 'Catatan lama';
     try {
       const d = new Date(iso);
       return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short' }) + ' ' + d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
@@ -2893,128 +2887,6 @@
     setInterval(() => refreshAllData(true), AUTO_REFRESH_MS);
   }
 
-  /* ================= SINKRON catatan & tugas antar-perangkat (Google Apps Script) =================
-     Memakai server & format data yang SAMA dengan dashboard per-divisi, jadi catatan di sini juga terlihat
-     di dashboard Gatsu / Flamboyan / Gagak Hitam, dan sebaliknya. */
-  const SYNC_URL = "https://script.google.com/macros/s/AKfycbxXC24jfCbbG8gfjE1WBB5pFhR1mctX2xzENis6I9IIn98PWQ2RVxJshxHBsq9OJPb0/exec";
-  const SYNC_KEY = "pp-Fnf_3aQWRDr1AtzjBjfS";
-  /* ===== Aturan penggabungan catatan/tugas (SAMA persis di dashboard dan di Apps Script) ===== */
-  function ppMergeRec(a, b) {
-    a = a || {}; b = b || {};
-    const out = { nama: a.nama || b.nama || '', jumlah: a.jumlah || b.jumlah || 0, leasing: a.leasing || b.leasing || '', jto: a.jto || b.jto || '' };
-    out.delAt = [a.delAt, b.delAt].filter(Boolean).sort().pop() || null;             // hapus-riwayat: yang terbaru menang
-    const pick = (b.lu || '') > (a.lu || '') ? b : a;                                  // status lunas: perubahan terbaru menang
-    out.lunasAt = pick.lunasAt || null; out.lu = pick.lu || null;
-    const notes = {};                                                                  // catatan: gabungan semua perangkat (hanya bertambah)
-    [a, b].forEach(r => (r.notes || []).forEach(n => { const id = n.id || ('L' + (n.t || '') + '|' + n.x); notes[id] = Object.assign({}, n, { id: id }); }));
-    out.notes = Object.keys(notes).map(k => notes[k]).filter(n => !out.delAt || (n.t && n.t > out.delAt))
-      .sort((p, q) => String(p.t || '').localeCompare(String(q.t || '')));
-    const tasks = {};                                                                  // tugas: versi dengan waktu ubah terbaru menang
-    [a, b].forEach(r => (r.tasks || []).forEach(t => { const p = tasks[t.id]; if (!p || (t.u || t.t || '') > (p.u || p.t || '')) tasks[t.id] = t; }));
-    out.tasks = Object.keys(tasks).map(k => tasks[k]).filter(t => !out.delAt || (t.t && t.t > out.delAt));
-    return out;
-  }
-  
-  const SYNC_DIVS = ['Gatsu', 'Flamboyan', 'Gagak Hitam'];
-  const UMUM = 'Umum', UMUM_KEY = '__tugas_umum__';        // tugas umum (tanpa faktur) disimpan di "divisi" Umum
-  let applyingRemote = false, syncPending = SYNC_URL ? true : false, syncing = false, syncTimer = null, syncLastOk = null;
-  const nowIso = () => new Date().toISOString();
-  const notesSyncEl = document.getElementById('notesSyncStatus');
-  function setNotesStatus(st) {
-    if (!notesSyncEl) return;
-    const hm = d => String(d.getHours()).padStart(2, '0') + '.' + String(d.getMinutes()).padStart(2, '0');
-    notesSyncEl.className = 'notes-sync ' + st;
-    notesSyncEl.innerHTML = !SYNC_URL ? 'Sinkron antar-perangkat belum aktif'
-      : st === 'busy' ? 'Menyinkronkan catatan&hellip;'
-      : st === 'err' ? '&#9888; Gagal sinkron catatan &middot; tersimpan di perangkat ini, dicoba lagi otomatis'
-      : '&#10003; Catatan tersinkron ' + (syncLastOk ? hm(syncLastOk) : '');
-  }
-  function rawBySlug() { const m = {}; (lastAllRows || []).forEach(r => { if (r.faktur) m[slug(r.faktur)] = r.faktur; }); return m; }
-  function fakturKey(item, map) { return item.fakturRaw || (detailMeta[item.faktur] && detailMeta[item.faktur].faktur) || map[item.faktur] || item.faktur; }
-  
-  // Ubah daftar catatan/tugas lokal menjadi format server (satu record per faktur) untuk satu divisi
-  function buildDb(div) {
-    const db = {}, map = rawBySlug();
-    const rec = k => db[k] || (db[k] = { notes: [], tasks: [] });
-    lsGet(LS_NOTES).forEach(n => {
-      if (n.cabang !== div) return;
-      const r = rec(fakturKey(n, map)), meta = detailMeta[n.faktur];
-      r.nama = r.nama || n.debtorName || '';
-      if (meta) { r.jumlah = meta.jumlah; r.jto = meta.jto; r.leasing = meta.metode === 'Tunai' ? 'Cash' : ''; }
-      r.notes.push({ id: n.id, t: n.createdAt, x: n.text });
-    });
-    lsGet(LS_TASKS).forEach(t => {
-      if ((t.faktur ? t.cabang : UMUM) !== div) return;
-      const r = rec(t.faktur ? fakturKey(t, map) : UMUM_KEY);
-      if (t.faktur) r.nama = r.nama || t.debtorName || '';
-      r.tasks.push({ id: t.id, x: t.title, pic: t.assignee || '', done: t.status === 'done', doneAt: t.doneAt || null, t: t.createdAt, u: t.u || t.createdAt, del: !!t.del });
-    });
-    return db;
-  }
-  // Gabungkan data dari server ke daftar lokal
-  function applyRemote(div, remote) {
-    const notes = lsGet(LS_NOTES), tasks = lsGet(LS_TASKS), isUmum = div === UMUM;
-    const nIds = new Set(notes.map(n => n.id)), tById = new Map(tasks.map(t => [t.id, t]));
-    let changed = false;
-    Object.keys(remote || {}).forEach(key => {
-      const rec = remote[key], fslug = isUmum ? null : slug(key);
-      if (rec.delAt && !isUmum) {                       // riwayat faktur ini dihapus di perangkat lain
-        for (let i = notes.length - 1; i >= 0; i--) if (notes[i].faktur === fslug && notes[i].cabang === div && String(notes[i].createdAt) <= rec.delAt) { notes.splice(i, 1); changed = true; }
-        for (let i = tasks.length - 1; i >= 0; i--) if (tasks[i].faktur === fslug && tasks[i].cabang === div && String(tasks[i].createdAt) <= rec.delAt) { tById.delete(tasks[i].id); tasks.splice(i, 1); changed = true; }
-      }
-      (rec.notes || []).forEach(n => {
-        if (nIds.has(n.id)) return;
-        notes.push({ id: n.id, faktur: fslug, fakturRaw: key, debtorName: rec.nama || '', cabang: div, text: n.x, createdAt: n.t || '1970-01-01T00:00:00.000Z' });
-        nIds.add(n.id); changed = true;
-      });
-      (rec.tasks || []).forEach(t => {
-        const cur = tById.get(t.id), ru = t.u || t.t || '';
-        if (cur && String(cur.u || cur.createdAt || '') >= ru) return;      // versi lokal sama / lebih baru
-        const obj = { id: t.id, title: t.x, assignee: t.pic || null, faktur: fslug, status: t.done ? 'done' : 'todo', doneAt: t.doneAt || null, createdAt: t.t || nowIso(), u: ru, del: !!t.del };
-        if (!isUmum) { obj.fakturRaw = key; obj.debtorName = rec.nama || (cur && cur.debtorName) || ''; obj.cabang = div; }
-        if (cur) Object.assign(cur, obj); else { tasks.unshift(obj); tById.set(obj.id, obj); }
-        changed = true;
-      });
-    });
-    if (changed) { applyingRemote = true; try { lsSet(LS_NOTES, notes); lsSet(LS_TASKS, tasks); } finally { applyingRemote = false; } }
-    return changed;
-  }
-  function syncSoon() {
-    if (!SYNC_URL || applyingRemote) return;
-    syncPending = true;
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(syncNotes, 1500);
-  }
-  async function syncNotes() {
-    if (!SYNC_URL || syncing) return;
-    syncing = true;
-    const sent = syncPending;
-    syncPending = false;
-    setNotesStatus('busy');
-    let ok = true, changed = false;
-    for (const div of SYNC_DIVS.concat([UMUM])) {
-      try {
-        const res = await fetch(SYNC_URL, { method: 'POST', body: JSON.stringify({ divisi: div, key: SYNC_KEY, db: sent ? buildDb(div) : {} }) });
-        const j = await res.json();
-        if (!j.ok) throw new Error(j.error || 'ditolak server');
-        if (applyRemote(div, j.db)) changed = true;
-      } catch (err) { ok = false; console.error('sinkron catatan', div, err); }
-    }
-    if (!ok && sent) syncPending = true;
-    if (ok) syncLastOk = new Date();
-    setNotesStatus(ok ? 'ok' : 'err');
-    if (changed) { renderAllNotes(); renderAllFakturTasks(); renderGeneralTasks(); }
-    syncing = false;
-    if (syncPending) { clearTimeout(syncTimer); syncTimer = setTimeout(syncNotes, 2000); }
-  }
-  function startNotesSync() {
-    setNotesStatus(SYNC_URL ? 'busy' : 'off');
-    if (!SYNC_URL) return;
-    syncNotes();
-    setInterval(() => { if (document.visibilityState === 'visible') syncNotes(); }, 60000);
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNotes(); });
-  }
-
   /* ---------------- boot ---------------- */
   renderBranchCards(branches);
   renderLeasingTable(leasingBreakdown);
@@ -3054,7 +2926,6 @@
   wireBucketChips();
   document.getElementById('bdpClose').addEventListener('click', closeBucketDetail);
   initLocalFeatures();
-  startNotesSync();
   wireMainTabs();
   startAutoRefresh();
 })();
