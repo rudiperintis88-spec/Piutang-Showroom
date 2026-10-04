@@ -732,7 +732,12 @@
 
   <!-- PRIORITY -->
   <div id="priorityBlock">
-    <div class="stitle"><h2>Prioritas Penagihan</h2><span>faktur dengan umur &gt; 26 hari · klik baris untuk catatan &amp; tugas</span><span id="notesSyncStatus" class="notes-sync"></span></div>
+    <div class="stitle"><h2>Prioritas Penagihan</h2><span>faktur dengan umur &gt; 26 hari · klik baris untuk catatan &amp; tugas</span><span id="notesSyncStatus" class="notes-sync"></span>
+      <div class="dp-export">
+        <button id="prExportPdf" class="dp-export-btn">Export PDF</button>
+        <button id="prExportExcel" class="dp-export-btn">Export Excel</button>
+      </div>
+    </div>
     <div class="priowrap">
       <div class="prio-head">
         <div class="t"><span class="flag"></span><h2 id="prioHeadCount">4 faktur butuh tindak lanjut segera</h2></div>
@@ -1256,10 +1261,14 @@
     sheets.forEach(s => {
       const matrix = [];
       const boldRows = []; // baris judul & Total dibuat bold
+      const wrapRows = []; // baris data dengan kolom teks panjang (mis. catatan) -> wrap text
       const emitGroup = (g) => {
         if (g.title) { matrix.push([g.title]); boldRows.push(matrix.length - 1); }
         matrix.push(g.headers);
-        g.rows.forEach(r => matrix.push(r));
+        g.rows.forEach(r => {
+          if (g.wrapCols) wrapRows.push({ r: matrix.length, cols: g.wrapCols });
+          matrix.push(r);
+        });
         if (g.totalRow) { matrix.push(g.totalRow); boldRows.push(matrix.length - 1); }
         matrix.push([]);
       };
@@ -1280,6 +1289,13 @@
           if (ws[ref]) ws[ref].s = { font: { bold: true } };
         }
       });
+      wrapRows.forEach(({ r, cols }) => {
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          if (ws[ref]) ws[ref].s = { alignment: { vertical: 'top', wrapText: cols.includes(c) } };
+        }
+      });
+      if (s.colWidths) ws['!cols'] = s.colWidths.map(w => ({ wch: w }));
       XLSX.utils.book_append_sheet(wb, ws, String(s.name).slice(0, 31));
     });
     XLSX.writeFile(wb, filename, { cellStyles: true });
@@ -1302,7 +1318,11 @@
         // grup ini utuh ke halaman baru. extraHeight/sectionTitle = ruang & teks
         // judul section yang harus ikut dihitung BERSAMAAN saat ini grup pertama
         // di section-nya, supaya judul section tidak pernah nyangkut sendirian.
-        const estHeight = extraHeight + (g.title ? 6 : 0) + 7 + g.rows.length * 5 + (g.totalRow ? 5.5 : 0) + 8;
+        // baris dengan kolom teks panjang (mis. catatan) lebih tinggi dari 5 mm
+        const rowsHeight = g.tallCols
+          ? g.rows.reduce((a, r) => a + Math.max(5, 2 + 3.2 * Math.max(...g.tallCols.map(c => String(r[c] == null ? '' : r[c]).split('\n').reduce((n, seg) => n + Math.max(1, Math.ceil(seg.length / 48)), 0)))), 0)
+          : g.rows.length * 5;
+        const estHeight = extraHeight + (g.title ? 6 : 0) + 7 + rowsHeight + (g.totalRow ? 5.5 : 0) + 8;
         const cappedEst = Math.min(estHeight, PAGE_H - BOTTOM_MARGIN - 22 - extraHeight);
         if (y + extraHeight + cappedEst > PAGE_H - BOTTOM_MARGIN) {
           doc.addPage();
@@ -1330,6 +1350,7 @@
           showFoot: 'lastPage', // Total cuma tampil sekali di halaman terakhir tabel ini, tidak dobel tiap tabel terpotong halaman
           startY: y,
           styles: { fontSize: 7.5 },
+          columnStyles: g.columnStyles,
           rowPageBreak: 'avoid',
         });
         y = doc.lastAutoTable.finalY + 8;
@@ -1842,6 +1863,68 @@
       });
     });
     if (detailGroups.length) sheets.push({ name: 'Detail Faktur per Leasing', groups: detailGroups });
+    return sheets;
+  }
+
+
+  /* ---------------- export: Prioritas Penagihan + catatan & tugas ---------------- */
+  function fmtDateTimeExport(iso) {
+    if (!iso || String(iso).startsWith('1970')) return '(catatan lama)';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    return `${fmtDateExport(d)} ${String(d.getHours()).padStart(2, '0')}.${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  function gatherPrioritasExportSheets() {
+    const src = exportSourceData();
+    const allNotes = lsGet(LS_NOTES);
+    const allTasks = lsGet(LS_TASKS).filter(t => !t.del);
+    const notesOf = fslug => allNotes.filter(n => n.faktur === fslug).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    const tasksOf = fslug => allTasks.filter(t => t.faktur === fslug).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    const taskLine = t => `${t.status === 'done' ? '[x]' : '[ ]'} ${t.title}${t.assignee ? ' (PIC: ' + t.assignee + ')' : ''}`;
+
+    const headers = ['No', 'Debitur', 'No. Faktur', 'Metode', 'Jumlah (Rp)', 'Tgl. Jatuh Tempo', 'Umur (Hari)', 'Sales PIC', 'Catatan', 'Tugas'];
+    const mainGroups = [];
+    const detailGroups = [];
+    BRANCH_ORDER.forEach(name => {
+      const list = (src.priority || []).filter(r => r.cabangLabel === name);
+      if (!list.length) return;
+      const sum = list.reduce((a, r) => a + r.jumlah, 0);
+      const rows = list.map((r, i) => {
+        const fs = slug(r.faktur);
+        const ns = notesOf(fs), ts = tasksOf(fs);
+        return [i + 1, r.name, r.faktur, r.metode, fmtNumExport(r.jumlah), r.jto, r.hari, r.sales,
+          ns.map(n => `${fmtDateTimeExport(n.createdAt)} — ${n.text}`).join('\n'),
+          ts.map(taskLine).join('\n')];
+      });
+      mainGroups.push({
+        title: `Divisi ${name}`, headers, rows,
+        totalRow: ['', `TOTAL (${list.length} unit)`, '', '', fmtNumExport(sum), '', '', '', '', ''],
+        wrapCols: [1, 8, 9], tallCols: [8, 9],
+        columnStyles: { 1: { cellWidth: 34 }, 8: { cellWidth: 62 }, 9: { cellWidth: 40 } },
+      });
+
+      // rincian: satu baris per catatan / tugas
+      const drows = []; let nN = 0, nT = 0;
+      list.forEach(r => {
+        const fs = slug(r.faktur);
+        notesOf(fs).forEach(n => { nN++; drows.push([drows.length + 1, r.name, r.faktur, fmtDateTimeExport(n.createdAt), 'Catatan', n.text, '']); });
+        tasksOf(fs).forEach(t => { nT++; drows.push([drows.length + 1, r.name, r.faktur, fmtDateTimeExport(t.createdAt), 'Tugas', t.title, `${t.status === 'done' ? 'Selesai' : 'Belum selesai'}${t.assignee ? ' · PIC: ' + t.assignee : ''}`]); });
+      });
+      if (drows.length) detailGroups.push({
+        title: `Divisi ${name}`,
+        headers: ['No', 'Debitur', 'No. Faktur', 'Waktu', 'Jenis', 'Isi', 'Status / PIC'],
+        rows: drows,
+        totalRow: ['', `TOTAL (${nN} catatan, ${nT} tugas)`, '', '', '', '', ''],
+        wrapCols: [5, 6], tallCols: [5],
+        columnStyles: { 1: { cellWidth: 36 }, 5: { cellWidth: 90 } },
+      });
+    });
+
+    const sheets = [];
+    if (mainGroups.length) sheets.push({ name: 'Prioritas Penagihan', groups: mainGroups, colWidths: [5, 28, 22, 12, 16, 16, 11, 26, 60, 42] });
+    if (detailGroups.length) sheets.push({ name: 'Rincian Catatan & Tugas', groups: detailGroups, colWidths: [5, 28, 22, 18, 10, 70, 28] });
+    if (!sheets.length) sheets.push({ name: 'Prioritas Penagihan', groups: [{ title: 'Tidak ada faktur dengan umur > 26 hari', headers: ['Keterangan'], rows: [['Tidak ada data']] }] });
     return sheets;
   }
 
@@ -3172,6 +3255,8 @@
   document.getElementById('stExportPdf').addEventListener('click', () => {
     exportToPdf('Penjualan_Sales_Terbanyak.pdf', 'Penjualan Sales Terbanyak', gatherStExportSheets());
   });
+  document.getElementById('prExportExcel').addEventListener('click', () => exportToExcel('Prioritas_Penagihan.xlsx', gatherPrioritasExportSheets()));
+  document.getElementById('prExportPdf').addEventListener('click', () => exportToPdf('Prioritas_Penagihan.pdf', 'Prioritas Penagihan', gatherPrioritasExportSheets()));
   document.getElementById('cbExportExcel').addEventListener('click', () => exportToExcel('Piutang_per_Cabang.xlsx', gatherCabangExportSheets()));
   document.getElementById('cbExportPdf').addEventListener('click', () => exportToPdf('Piutang_per_Cabang.pdf', 'Piutang per Cabang', gatherCabangExportSheets()));
   document.getElementById('rgExportExcel').addEventListener('click', () => exportToExcel('Ringkasan_Gabungan.xlsx', gatherRingkasanExportSheets()));
