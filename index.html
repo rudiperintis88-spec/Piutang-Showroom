@@ -436,7 +436,7 @@
   .pw-error { color: var(--b4); font-size: 13px; margin-top: 14px; }
   .pw-error.hidden { display: none; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
@@ -548,22 +548,10 @@
   </div>
 
   <div class="tabpane" id="tab-cabang">
-    <div class="dp-controls">
-      <div class="dp-export">
-        <button id="cbExportPdf" class="dp-export-btn">⭳ Export PDF</button>
-        <button id="cbExportExcel" class="dp-export-btn">⭳ Export Excel</button>
-      </div>
-    </div>
     <div class="branches" id="branchGrid"></div>
   </div>
 
   <div class="tabpane hidden" id="tab-ringkasan">
-    <div class="dp-controls">
-      <div class="dp-export">
-        <button id="rgExportPdf" class="dp-export-btn">⭳ Export PDF</button>
-        <button id="rgExportExcel" class="dp-export-btn">⭳ Export Excel</button>
-      </div>
-    </div>
     <div class="leasingwrap" id="leasingWrap">
       <table class="leasing-table">
         <thead>
@@ -1730,118 +1718,6 @@
     }
   }
 
-
-  /* ---------------- export: Piutang per Cabang & Ringkasan Gabungan ---------------- */
-  function exportSourceData() {
-    // pakai data live kalau sudah ada; kalau belum, jatuh ke data statis bawaan halaman
-    if (lastAgg) return lastAgg;
-    return {
-      branches, priority, leasingBreakdown,
-      count: branches.reduce((a, b) => a + b.count, 0),
-      totalAll: branches.reduce((a, b) => a + b.total, 0),
-    };
-  }
-
-  function gatherCabangExportSheets() {
-    const src = exportSourceData();
-    const totalAll = src.branches.reduce((a, b) => a + b.total, 0);
-    const totalCount = src.branches.reduce((a, b) => a + b.count, 0);
-
-    const groups = [];
-    groups.push({
-      title: 'Total Piutang Berjalan — 3 Cabang',
-      headers: ['No', 'Cabang', 'Jumlah Faktur', 'Total Piutang (Rp)'],
-      rows: src.branches.map((b, i) => [i + 1, b.name, b.count, fmtNumExport(b.total)]),
-      totalRow: ['', `TOTAL (${totalCount} unit)`, totalCount, fmtNumExport(totalAll)],
-    });
-    src.branches.forEach(b => {
-      groups.push({
-        title: `Divisi ${b.name} — umur piutang`,
-        headers: ['No', 'Umur Piutang', 'Jumlah Faktur', 'Nominal (Rp)'],
-        rows: b.buckets.map((bk, i) => [i + 1, bk.label, bk.count, fmtNumExport(bk.sum)]),
-        totalRow: ['', `TOTAL (${b.count} unit)`, b.count, fmtNumExport(b.total)],
-      });
-    });
-    const sheets = [{ name: 'Piutang per Cabang', groups }];
-
-    // Prioritas Penagihan (faktur > 26 hari) ikut tampil di tab ini, jadi ikut diekspor.
-    const prioGroups = [];
-    BRANCH_ORDER.forEach(name => {
-      const list = (src.priority || []).filter(r => r.cabangLabel === name);
-      if (!list.length) return;
-      const sum = list.reduce((a, r) => a + r.jumlah, 0);
-      prioGroups.push({
-        title: `Divisi ${name}`,
-        headers: ['No', 'Debitur', 'No. Faktur', 'Metode', 'Jumlah (Rp)', 'Tgl. Jatuh Tempo', 'Umur (Hari)', 'Sales PIC'],
-        rows: list.map((r, i) => [i + 1, r.name, r.faktur, r.metode, fmtNumExport(r.jumlah), r.jto, r.hari, r.sales]),
-        totalRow: ['', `TOTAL (${list.length} unit)`, '', '', fmtNumExport(sum), '', '', ''],
-      });
-    });
-    if (prioGroups.length) sheets.push({ name: 'Prioritas Penagihan', groups: prioGroups });
-    return sheets;
-  }
-
-  function gatherRingkasanExportSheets() {
-    const src = exportSourceData();
-    const list = src.leasingBreakdown || [];
-    const labelOf = l => l.name === 'Cash' ? 'Cash (Tunai)' : l.name;
-    const branchNames = BRANCH_KEYS.map(bk => BRANCH_DISPLAY[bk].label);
-    const totCount = list.reduce((a, l) => a + l.count, 0);
-    const totSum = list.reduce((a, l) => a + l.sum, 0);
-    const branchTotals = computeBranchTotalsFromLeasing(list);
-
-    // Sheet 1: matriks Leasing x Cabang
-    const matrixRows = list.map((l, i) => [
-      i + 1, labelOf(l),
-      ...BRANCH_KEYS.map(bk => { const b = l.byBranch[bk]; return b && b.sum ? `${fmtNumExport(b.sum)} (${b.count} faktur)` : '-'; }),
-      l.count, fmtNumExport(l.sum), (l.pct * 100).toFixed(1) + '%',
-    ]);
-    const matrixTotal = ['', `TOTAL (${totCount} unit)`,
-      ...BRANCH_KEYS.map(bk => fmtNumExport(branchTotals[bk].sum)), totCount, fmtNumExport(totSum), '100.0%'];
-    const sheets = [{
-      name: 'Ringkasan Gabungan',
-      groups: [{
-        title: 'Piutang per Leasing / Metode',
-        headers: ['No', 'Leasing / Metode', ...branchNames, 'Total Faktur', 'Total Nilai (Rp)', '% dari Total'],
-        rows: matrixRows, totalRow: matrixTotal,
-      }],
-    }];
-
-    // Sheet 2: Leasing per Divisi (satu grup per cabang)
-    const divGroups = BRANCH_KEYS.map(bk => {
-      const bt = branchTotals[bk];
-      const items = list.filter(l => l.byBranch[bk] && l.byBranch[bk].count);
-      return {
-        title: `Divisi ${BRANCH_DISPLAY[bk].label}`,
-        headers: ['No', 'Leasing', 'Faktur', 'Nilai (Rp)', '%'],
-        rows: items.map((l, i) => [i + 1, labelOf(l), l.byBranch[bk].count, fmtNumExport(l.byBranch[bk].sum), (bt.sum ? l.byBranch[bk].sum / bt.sum * 100 : 0).toFixed(1) + '%']),
-        totalRow: ['', `TOTAL (${bt.count} unit)`, bt.count, fmtNumExport(bt.sum), '100.0%'],
-      };
-    }).filter(g => g.rows.length);
-    if (divGroups.length) sheets.push({ name: 'Leasing per Divisi', groups: divGroups });
-
-    // Sheet 3: detail faktur per leasing (hanya ada kalau data live sudah dimuat)
-    const detailGroups = [];
-    list.forEach(l => {
-      const inv = [];
-      BRANCH_KEYS.forEach(bk => {
-        const b = l.byBranch[bk];
-        if (b && b.invoices) b.invoices.forEach(x => inv.push({ ...x, cabang: BRANCH_DISPLAY[bk].label }));
-      });
-      if (!inv.length) return;
-      inv.sort((a, b) => b.hari - a.hari);
-      const sum = inv.reduce((a, x) => a + x.jumlah, 0);
-      detailGroups.push({
-        title: `Leasing: ${labelOf(l)}`,
-        headers: ['No', 'Debitur', 'No. Faktur', 'Cabang', 'Nominal (Rp)', 'Hari'],
-        rows: inv.map((x, i) => [i + 1, x.nama, x.faktur, x.cabang, fmtNumExport(x.jumlah), x.hari]),
-        totalRow: ['', `TOTAL (${inv.length} unit)`, '', '', fmtNumExport(sum), ''],
-      });
-    });
-    if (detailGroups.length) sheets.push({ name: 'Detail Faktur per Leasing', groups: detailGroups });
-    return sheets;
-  }
-
   function gatherStExportSheets() {
     const visibleMonths = monthWindow.slice(-stRange);
     const monthsToShow = stSelectedMonth === 'all' ? visibleMonths : visibleMonths.filter(m => m.key === stSelectedMonth);
@@ -2439,10 +2315,8 @@
 
   /* ---------------- apply fresh aggregates to DOM ---------------- */
   let lastAllRows = [];
-  let lastAgg = null; // hasil agregasi terakhir (live) — dipakai export Piutang per Cabang & Ringkasan Gabungan
 
   function applyAggregates(agg) {
-    lastAgg = agg;
     document.getElementById('heroTotal').textContent = fmtRp(agg.totalAll);
     document.getElementById('heroSub').innerHTML = `dari <b>${agg.count}</b> faktur / unit &nbsp;·&nbsp; rata-rata <b>${fmtRp(agg.count ? agg.totalAll/agg.count : 0)}</b> per unit`;
     document.getElementById('faktCountLabel').textContent = agg.count;
@@ -3043,10 +2917,6 @@
   document.getElementById('stExportPdf').addEventListener('click', () => {
     exportToPdf('Penjualan_Sales_Terbanyak.pdf', 'Penjualan Sales Terbanyak', gatherStExportSheets());
   });
-  document.getElementById('cbExportExcel').addEventListener('click', () => exportToExcel('Piutang_per_Cabang.xlsx', gatherCabangExportSheets()));
-  document.getElementById('cbExportPdf').addEventListener('click', () => exportToPdf('Piutang_per_Cabang.pdf', 'Piutang per Cabang', gatherCabangExportSheets()));
-  document.getElementById('rgExportExcel').addEventListener('click', () => exportToExcel('Ringkasan_Gabungan.xlsx', gatherRingkasanExportSheets()));
-  document.getElementById('rgExportPdf').addEventListener('click', () => exportToPdf('Ringkasan_Gabungan.pdf', 'Ringkasan Gabungan', gatherRingkasanExportSheets()));
   wireDetailPenjualanV2();
   renderPriorityTable(priority);
   renderRincianLeasing(null);
