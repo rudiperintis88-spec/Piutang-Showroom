@@ -3046,8 +3046,9 @@
     for (const row of rows) {
       if (!row) continue;
       for (const cell of row) {
-        const m = String(cell || '').match(/Per\s*:\s*(\d{1,2}-[A-Za-z]+-\d{4})/i);
-        if (m) return m[1];
+        // Salin teks sel "Per : ..." dari sheet APA ADANYA (termasuk jam), tanpa diolah ulang
+        const m = String(cell || '').trim().match(/\bPer\s*:[\s\S]*/i);
+        if (m) return m[0].trim();
       }
       if (row.some(c => cellStr(c) === 'No') ) break; // stop once we reach the real header row
     }
@@ -3063,7 +3064,7 @@
       const text = await res.text();
       const rows = parseCSVFull(text);
       const perDate = extractPerDate(rows);
-      if (perDate) document.getElementById('perDateLabel').textContent = `Per : ${perDate}`;
+      if (perDate) document.getElementById('perDateLabel').textContent = perDate;
       const agingRows = parseAgingRows(rows);
       const agg = computeAggregates(agingRows);
       applyAggregates(agg);
