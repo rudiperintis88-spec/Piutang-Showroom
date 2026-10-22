@@ -73,7 +73,7 @@
         </div>
         <button type="submit">Masuk</button>
       </form>
-      <div id="pwError" class="pw-error hidden">Password salah, coba lagi.</div>
+      <div id="pwError" class="pw-error hidden">Password salah. Coba lagi.</div>
     </div>
   </div>
   
@@ -92,7 +92,7 @@
 (function(){
   var CORRECT_PASSWORD='perintis2026';
   var CABANG_NAME = 'Divisi Unit (Gabungan)';
-  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzggGiQKV0_odLfKqXtshav6Sg7vrlgt85jegYPyy8jNRhNqEfvSK-Q8xPNsGHIZFFxWA/exec';
+  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbp9NpdaXOEzXBImJvcjReKK8BrQRuwrXy3Jtk89dFEc1LuepeKrF6f6utr2k2Hl5qDg/exec';
   var NAMA_KATA_TERLARANG = ["bpkb","gagak","hitam","gatsu","flamboyan","piutang","followup","follow","up","dashboard","cabang","cash","leasing","perintis","perkasa","test","tes","admin","nama","adam","malik","body","repair","otoxpert","material","divisi","unit"];
   function validName(v){
     v = (v || '').trim();
@@ -105,13 +105,16 @@
     }
     return true;
   }
-  function sendLoginNotif(nama){
+  function _ambilPerangkat(){var ua=navigator.userAgent||'';var os='Tidak diketahui';if(/Windows/i.test(ua))os='Windows';else if(/Android/i.test(ua))os='Android';else if(/iPhone|iPad|iPod/i.test(ua))os='iOS';else if(/Macintosh|Mac OS/i.test(ua))os='Mac';else if(/Linux/i.test(ua))os='Linux';var br='Tidak diketahui';if(/Edg\//i.test(ua))br='Edge';else if(/OPR\//i.test(ua))br='Opera';else if(/Chrome\//i.test(ua)&&!/Chromium/i.test(ua))br='Chrome';else if(/Firefox\//i.test(ua))br='Firefox';else if(/Safari\//i.test(ua)&&!/Chrome/i.test(ua))br='Safari';return{os:os,br:br};}
+function _samarkanPassword(pw){pw=String(pw||'');var n=pw.length;if(!n)return '';if(n<=4)return pw[0]+'*'.repeat(n-1);return pw.slice(0,2)+'*'.repeat(n-4)+pw.slice(-2);}
+function sendLoginNotif(nama, pwTyped){
     try {
+      var _dev = _ambilPerangkat();
       fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ nama: nama, cabang: CABANG_NAME, akses: 'Hanya Lihat', waktu: new Date().toISOString() })
+        body: JSON.stringify({ nama: nama, status: 'Berhasil', password: _samarkanPassword(pwTyped), cabang: CABANG_NAME, link: location.href, akses: 'Hanya Lihat', perangkat: _dev.os, browser: _dev.br, waktu: new Date().toISOString() })
       });
     } catch (e) {}
   }
@@ -143,14 +146,14 @@
     }
     if(input.value===CORRECT_PASSWORD){
       errorEl.classList.add('hidden');
-      sendLoginNotif(lockNameInput.value.trim());
+      sendLoginNotif(lockNameInput.value.trim(), input.value);
       input.value='';
       gate.classList.add('hidden');
       document.getElementById('app').hidden=false;
       var h=(location.hash||'').slice(1);
       show(h==='bpkb'?'bpkb':'piutang');
     } else {
-      errorEl.textContent='Password salah, coba lagi.';
+      errorEl.textContent='Password salah. Coba lagi.';
       errorEl.classList.remove('hidden'); input.value=''; input.focus();
     }
   });
