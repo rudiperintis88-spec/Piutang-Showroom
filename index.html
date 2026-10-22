@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dashboard Internal Audit — PT Perintis Perkasa</title>
+<title>Dashboard Internal Audit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -47,11 +47,18 @@
 #lockName::placeholder{color:#9aa3b1 !important;opacity:1 !important;}
 #lockName:focus{outline:none !important;border-color:#6D28D9 !important;box-shadow:none !important;}
 </style>
+<style id="fieldfix">
+#lockName,#pwInput{width:100% !important;height:56px !important;box-sizing:border-box !important;padding:0 18px !important;margin:0 !important;font-size:16px !important;line-height:normal !important;text-align:left !important;border:1px solid #E4E8EE !important;border-radius:14px !important;background:#F5F6F8 !important;color:#171B21 !important;font-family:inherit !important;-webkit-appearance:none !important;appearance:none !important}
+#pwInput{padding-right:52px !important}
+#lockName::placeholder,#pwInput::placeholder{color:#9aa3b1 !important;opacity:1 !important;font-size:16px !important}
+#lockName:focus,#pwInput:focus{outline:none !important;box-shadow:none !important;border-color:#6D28D9 !important}
+#lockName{margin-bottom:0 !important}
+</style>
 </head>
 <body>
 <div id="passwordGate" class="pw-gate">
     <div class="pw-box">
-      <div class="pw-co">PT Perintis Perkasa, Medan</div>
+      <div class="pw-co"></div>
       <div class="pw-title">Divisi Unit</div>
       <form id="pwForm">
         <div class="pw-field">
@@ -104,7 +111,7 @@
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ nama: nama, cabang: CABANG_NAME, waktu: new Date().toISOString() })
+        body: JSON.stringify({ nama: nama, cabang: CABANG_NAME, akses: 'Hanya Lihat', waktu: new Date().toISOString() })
       });
     } catch (e) {}
   }
